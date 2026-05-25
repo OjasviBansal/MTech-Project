@@ -1,16 +1,12 @@
 // ==================== THEMATICS MASK PANEL (ONES) ====================
-
 var roi_boundary = null;
 var mapInstance = null;
 var loadedImage = null;
 var keepRestorationMarkerOnTopFn = null;
-
 var selectedThemeValues = [];
 var checkboxes = {};
 var onesLayer = null;
-
 var loadMask = null;
-
 
 // ==================== THEMATIC DEFINITIONS ====================
 
@@ -35,15 +31,11 @@ themeNames.forEach(function(name, i) {
   themeNameToIndex[name] = themeIndices[i];
 });
 
-
-
-// Allow main script to inject map and ROI
 exports.setROI = function(roi, map) {
   roi_boundary = roi;
   mapInstance = map;
 };
 
-// Optional: allow raising the restoration marker above this layer
 exports.setKeepMarkerOnTop = function(fn) {
   keepRestorationMarkerOnTopFn = fn;
 };
@@ -58,15 +50,9 @@ function removeLayerByName(name) {
   }
 }
 
-// To retrieve the loaded image later (for Step 8)
-// exports.getOneMap = function() {
-//   return loadedImage;
-// };
 exports.getOneMap = function() {
 
   if (!roi_boundary) return null;
-  
-  // removeLayerByName('Open Natural Ecosystems (ONEs)');
 
   var thematicImg = ee.Image(
     'projects/ee-open-natural-ecosystems/assets/publish/onesWith7Classes/landcover_hier'
@@ -74,9 +60,6 @@ exports.getOneMap = function() {
 
   var selectedIndices = [];
 
-  // -------------------------------------------------
-  // 1️⃣ First check checkbox state (UI selection)
-  // -------------------------------------------------
   if (checkboxes && Object.keys(checkboxes).length > 0) {
 
     themeNames.forEach(function(name, i) {
@@ -86,10 +69,6 @@ exports.getOneMap = function() {
     });
   }
 
-  // -------------------------------------------------
-  // 2️⃣ If nothing selected via UI,
-  //    try selectedThemeValues (JSON / preset)
-  // -------------------------------------------------
   if (selectedIndices.length === 0 && selectedThemeValues && selectedThemeValues.length > 0) {
 
     selectedThemeValues.forEach(function(v) {
@@ -129,8 +108,6 @@ exports.getOneMap = function() {
   return loadedImage;
 };
 
-
-
 // ==================== PANEL UI ====================
 
 exports.getPanel = function() {
@@ -145,22 +122,6 @@ exports.getPanel = function() {
     value: 'Select thematic classes to display as a mask',
     style: {'fontSize':'14px'}
   }));
-
-  // var themeNames = [
-  //   'Open Agriculture',               
-  //   'Bare / Rocky / Sparsely Vegetated',
-  //   'Built-Up',
-  //   'Cultivated Trees',
-  //   'Dune',
-  //   'Forest',
-  //   'Saline Flat',
-  //   'Savanna Grassland',
-  //   'Savanna Shrubland',
-  //   'Savanna Woodland',
-  //   'Water / Wetland'
-  // ];
-  // var themeIndices = [1,2,3,4,5,6,7,8,9,10,11];
-
   
   var listPanel = ui.Panel();
   themeNames.forEach(function(name){
@@ -174,7 +135,6 @@ exports.getPanel = function() {
   var clearBtn = ui.Button({label:'Clear', style:{margin:'5px 0 5px 0', height:'30px'}});
   panel.add(ui.Panel([loadBtn, clearBtn], ui.Panel.Layout.flow('horizontal')));
 
-  // var onesLayer = null;
   var thematicImg;
 
   function clear() {
@@ -185,19 +145,14 @@ exports.getPanel = function() {
   }
 
   loadMask = function() {
-    // if (mapInstance && onesLayer) {
-    //   mapInstance.layers().remove(onesLayer);
-    //   onesLayer = null;
-    // }
     
     removeLayerByName('Open Natural Ecosystems (ONEs)');
 
     if (!mapInstance) {
-      print('⚠️ Please select an ecoregion first — map not initialized.');
+      print('Please select an ecoregion first — map not initialized.');
       return;
     }
 
-    // Load the thematic image
     thematicImg = ee.Image(
       'projects/ee-open-natural-ecosystems/assets/publish/onesWith7Classes/landcover_hier'
 ).select('l2LabelNum');
@@ -214,7 +169,7 @@ exports.getPanel = function() {
       }
     });
     
-    // 🔥 Apply stored values if any
+    //  Apply stored values if any
     if (selectedThemeValues && selectedThemeValues.length > 0) {
       themeNames.forEach(function(name) {
         if (checkboxes[name]) {
@@ -228,7 +183,7 @@ exports.getPanel = function() {
     
     if (masks.length === 0) {
       loadedImage = null;
-      print('ℹ️ No ONEs classes selected — layer not added.');
+      print('No ONEs classes selected — layer not added.');
       return;
     }
 
@@ -257,99 +212,12 @@ exports.getPanel = function() {
 };
 
 
-
 exports.getRule = function() {
   if (!selectedThemeValues || selectedThemeValues.length === 0) {
     return null;
   }
   return selectedThemeValues; // array of NAMES
 };
-
-
-// ---------------- Set ONEs values programmatically (BY NAME) ----------------
-// exports.setValues = function(values) {
-//   if (!Array.isArray(values)) return;
-
-//   // Keep only valid theme names
-//   selectedThemeValues = values.filter(function(v) {
-//     return themeNameToIndex.hasOwnProperty(v);
-//   });
-
-//   // Update checkboxes
-//   themeNames.forEach(function(name) {
-//     if (checkboxes[name]) {
-//       checkboxes[name].setValue(
-//         selectedThemeValues.indexOf(name) !== -1
-//       );
-//     }
-//   });
-
-//   // Reload mask if panel already initialized
-//   if (typeof loadMask === 'function') {
-//     loadMask();
-//   }
-// };
-// exports.setValues = function(values) {
-//   if (!Array.isArray(values)) return;
-
-//   // Keep only valid theme names
-//   selectedThemeValues = values.filter(function(v) {
-//     return themeNameToIndex.hasOwnProperty(v);
-//   });
-
-//   // 🔥 If checkboxes not yet created → stop here
-//   if (!checkboxes || Object.keys(checkboxes).length === 0) {
-//     return;
-//   }
-
-//   // Update checkboxes
-//   themeNames.forEach(function(name) {
-//     if (checkboxes[name]) {
-//       checkboxes[name].setValue(
-//         selectedThemeValues.indexOf(name) !== -1
-//       );
-//     }
-//   });
-
-//   if (typeof loadMask === 'function') {
-//     loadMask();
-//   }
-// };
-
-// exports.setValues = function(values) {
-//   if (!Array.isArray(values)) return;
-
-//   selectedThemeValues = [];
-
-//   values.forEach(function(v) {
-//     if (typeof v === 'number') {
-//       // Convert number to name
-//       var name = themeNames[themeIndices.indexOf(v)];
-//       if (name) selectedThemeValues.push(name);
-//     } else if (typeof v === 'string' && themeNameToIndex.hasOwnProperty(v)) {
-//       selectedThemeValues.push(v);
-//     }
-//   });
-
-//   // 🔥 If checkboxes not yet created → stop here
-//   if (!checkboxes || Object.keys(checkboxes).length === 0) {
-//     return;
-//   }
-
-//   // Update checkboxes
-//   themeNames.forEach(function(name) {
-//     if (checkboxes[name]) {
-//       checkboxes[name].setValue(
-//         selectedThemeValues.indexOf(name) !== -1
-//       );
-//     }
-//   });
-
-//   if (mapInstance) {
-//     loadMask(); // ✅ will remove existing layer first
-//   }
-
-// };
 
 exports.setValues = function(values) {
   if (!Array.isArray(values)) return;
@@ -365,17 +233,14 @@ exports.setValues = function(values) {
     }
   });
 
-  // 🔥 If checkboxes not yet created → stop here
   if (!checkboxes || Object.keys(checkboxes).length === 0) {
     return;
   }
 
-  // Update checkboxes without loading the map
   themeNames.forEach(function(name) {
     if (checkboxes[name]) {
       checkboxes[name].setValue(selectedThemeValues.indexOf(name) !== -1);
     }
   });
 
-  // ❌ Do NOT call loadMask() here
 };
