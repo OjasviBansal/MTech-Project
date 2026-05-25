@@ -25,37 +25,12 @@ exports.apply = function(combinedCondition, roi_boundary, mapPanel, area_thresho
   });
 
   var filtered_vector = area_vector.filter(ee.Filter.gte('area', area_threshold_km2));
-
-  // Convert back to raster
-  // var filtered_raster = filtered_vector.reduceToImage({
-  //   properties: ['label'],
-  //   reducer: ee.Reducer.first()
-  // }).selfMask();
   
   mapPanel.layers().forEach(function(layer, i) {
     if (layer && layer.getName && layer.getName() === 'Size Filtered Polygons') {
       mapPanel.layers().remove(layer);
     }
   });
-  // var fill = ee.Image().byte().paint(filtered_vector, 1);
-  // var outline = ee.Image().byte().paint(filtered_vector, 1, 2);
-  // var display = fill.add(outline);
-
-  // // Add layer to the provided mapPanel
-  // mapPanel.addLayer(display, {palette: ['yellow']}, 'Size Filtered Polygons');
-  
-  // Create a single image with light yellow fill and border
-  // var filled = ee.Image().paint({
-  //   featureCollection: filtered_vector,
-  //   color: 1,              // Fill color index
-  //   width: 1               // Border width (in pixels)
-  // });
-  
-  // // Add as one layer with a light yellow color
-  // mapPanel.addLayer(filled, {
-  //   palette: ['yellow'],  // Light yellow shade (LemonChiffon)
-  //   opacity: 0.9
-  // }, 'Size Filtered Polygons');
   
   // Paint filled interior first (no width argument means fill)
   var fill = ee.Image().byte().paint({
