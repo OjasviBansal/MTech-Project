@@ -1,13 +1,12 @@
 var roi_boundary = null;
 var loadedImage = null;
-var selectedYear = null; // store the year passed from main script
-var mapInstance = null;  // store the map from main script
+var selectedYear = null; 
+var mapInstance = null; 
 var keepRestorationMarkerOnTopFn = null;
-// ==================== ROI Setter ====================
 exports.setROI = function(roi, map, year) {
   roi_boundary = roi;
-  mapInstance = map;     // store the map
-  selectedYear = year;   // store the test end year
+  mapInstance = map;    
+  selectedYear = year;   
 };
 
 
@@ -16,7 +15,7 @@ var lulc_names = [
   'Kharif water',            // 2
   'Kharif and rabi water',   // 3
   'Kharif and rabi and zaid water', // 4
-  'Tree/Forests',            // 6
+  'Trees',            // 6
   'Barren lands',            // 7
   'Single Kharif Cropping',  // 8
   'Single Non-Kharif Cropping', // 9
@@ -27,8 +26,6 @@ var lulc_names = [
   var lulc_indices = [1,2,3,4,6,7,8,9,10,11,12];
 
 
-
-// ==================== Year Setter (only for test years) ====================
 exports.setYears = function(currentYear) {
   if (typeof currentYear !== 'number') {
     throw new Error('LULC year must be a number');
@@ -37,15 +34,18 @@ exports.setYears = function(currentYear) {
 };
 
 exports.getLoadedImage = function() {
-  return loadedImage; // the ee.Image used in Map.addLayer
+  return loadedImage;
 };
 
 var lulcUtils = { layer: null};
-var checkboxes = [];  // global array for LULC checkboxes
+var checkboxes = []; 
 
 exports.getPanel = function() {
   var panel = ui.Panel();
-
+  var errorLabel = ui.Label({
+      value: '',
+      style: {color: 'red', fontWeight: 'bold', fontSize: '13px', margin: '4px 0'}
+    });
   var sectionTitle = ui.Label({
     value: 'Step 7: Apply masking layers',
     style: {'fontSize': '16px','fontWeight':'bold','margin':'15px 0 5px 10px'}
@@ -73,7 +73,7 @@ exports.getPanel = function() {
   var loadButton = ui.Button({label:'Load', style:{margin:'5px 5px 5px 0', height:'30px'}});
   var clearButton = ui.Button({label:'Clear Map', style:{margin:'5px 0 5px 0', height:'30px'}});
   panel.add(ui.Panel([loadButton, clearButton], ui.Panel.Layout.flow('horizontal')));
-
+  panel.add(errorLabel);
   var clearMap = function(){
     if(!mapInstance) return;
     if(lulcUtils.layer){ mapInstance.layers().remove(lulcUtils.layer); lulcUtils.layer = null; }
@@ -81,7 +81,9 @@ exports.getPanel = function() {
   };
 
   var loadLULC = function(){
+    errorLabel.setValue('');
     if (!selectedYear) {
+      errorLabel.setValue('Current year not set. Please set the year in Step 6 before loading LULC.');
       print('Current year not set from Step 6');
       return;
     }
@@ -108,7 +110,7 @@ exports.getPanel = function() {
 
     var finalMask = ee.Image(0);
     if(maskList.length > 0){
-      finalMask = ee.ImageCollection(maskList).max(); // combine all selected categories
+      finalMask = ee.ImageCollection(maskList).max(); 
     }
 
     loadedImage = finalMask;
@@ -142,8 +144,6 @@ exports.setKeepMarkerOnTop = function(fn) {
 };
 
 
-
-
 exports.getRule = function () {
   if (!roi_boundary) return null;
 
@@ -162,45 +162,38 @@ exports.getRule = function () {
 };
 
 
-
-
-
 exports.setValues = function(lulcRules, map) {
   var mapToUse = map || mapInstance;
   
   if (!lulcRules || !lulcRules.length) return;
 
   if (!mapInstance) {
-    print('⚠️ LULC: mapInstance not set');
+    print('LULC: mapInstance not set');
     return;
   }
 
   if (!selectedYear) {
-    print('⚠️ LULC: selectedYear not set');
+    print('LULC: selectedYear not set');
     return;
   }
 
-  // 1️⃣ Clear existing checkbox state
   Object.keys(checkboxes).forEach(function(name) {
     checkboxes[name].setValue(false);
   });
 
-  // 2️⃣ Tick checkboxes from JSON
   lulcRules.forEach(function(name) {
     if (checkboxes[name]) {
       checkboxes[name].setValue(true);
     } else {
-      print('⚠️ Unknown LULC class in JSON:', name);
+      print('Unknown LULC class in JSON:', name);
     }
   });
 
-  // 3️⃣ Remove existing LULC layer
   if (lulcUtils.layer) {
     mapInstance.layers().remove(lulcUtils.layer);
     lulcUtils.layer = null;
   }
 
-  // 4️⃣ Load LULC image (current inference year)
   var img = ee.Image(
     "projects/corestack-datasets/assets/datasets/LULC_v3_river_basin/pan_india_lulc_v3_2023_2024"
   ).select('predicted_label');
@@ -209,7 +202,6 @@ exports.setValues = function(lulcRules, map) {
     img = img.clip(roi_boundary);
   }
 
-  // 5️⃣ Build combined mask
   var maskList = [];
 
   lulc_names.forEach(function(name, i) {
@@ -222,21 +214,12 @@ exports.setValues = function(lulcRules, map) {
 
   var finalMask = ee.ImageCollection(maskList).max().selfMask();
   loadedImage = finalMask;
-
-  // 6️⃣ Add layer to inference map only
-  // lulcUtils.layer = mapInstance.addLayer(
-  //   finalMask,
-  //   {palette: ['333333'], min: 0, max: 1},
-  //   'Selected LULC categories'
-  // );
-  // mapToUse.addLayer(finalMask.selfMask(), {palette:['333333'], min:0, max:1}, 'Selected LULC categories');
   
   if (lulcUtils.layer) {
     mapToUse.layers().remove(lulcUtils.layer);
     lulcUtils.layer = null;
   }
   
-  // 7️⃣ Add new LULC layer and STORE reference
   lulcUtils.layer = mapToUse.addLayer(
     finalMask.selfMask(),
     {palette: ['333333'], min: 0, max: 1},
