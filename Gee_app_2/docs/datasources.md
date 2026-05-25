@@ -28,5 +28,5 @@
 
 - **Soil layer** - Food and agricultural organisation (FAO) Harmonised Soil Database (HWSD)
 
-
+- **Spatial layer** - projects/sat-io/open-datasets/GLC-FCS30D/annual
 - **Temperature (WorldClim BIO Variables V1)** https://developers.google.com/earth-engine/datasets/catalog/WORLDCLIM_V1_BIO
