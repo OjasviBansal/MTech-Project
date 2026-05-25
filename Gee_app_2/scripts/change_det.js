@@ -15,7 +15,6 @@ var endChecks = {}; // module-level
 
 var keepRestorationMarkerOnTopFn = null;
 
-// Helper: check it's a ui.Map-ish object
 function isMap(m) { return m && typeof m.addLayer === 'function' && typeof m.layers === 'function'; }
 
 // Initialize checkboxes
@@ -36,21 +35,6 @@ function initializeCheckboxes() {
 exports.setKeepMarkerOnTop = function(fn) {
   keepRestorationMarkerOnTopFn = fn;
 };
-
-// ==================== Loaded image getter ====================
-// exports.getLoadedImage = function(mode) {
-//   // mode = 'validation' (training) or 'test' (inference)
-//   if (!roi_boundary || selectedStart.length === 0 || selectedEnd.length === 0) return null;
-//   if (mode === 'validation') {
-//     if (!years.validation.start || !years.validation.end) return null;
-//     return computeChange(years.validation.start, years.validation.end, selectedStart, selectedEnd, roi_boundary);
-//   } else if (mode === 'test') {
-//     if (!years.test.start || !years.test.end) return null;
-//     return computeChange(years.test.start, years.test.end, selectedStart, selectedEnd, roi_boundary);
-//   } else {
-//     return null;
-//   }
-// };
 
 // ==================== ROI / REGISTRATION ====================
 exports.setROI = function(roi, mapInstance) {
@@ -168,41 +152,15 @@ exports.getPanel = function() {
     legends = [];
     loadedPreviewLayer = null;
   }
-  // ---- Only training map preview here ----
-  // runBtn.onClick(function() {
-  //   if (!roi_boundary) { print('⚠️ Set ROI from main panel first.'); return; }
-  //   if (!years.validation.start || !years.validation.end) { print('⚠️ Validation years not set.'); return; }
-  //   if (selectedStart.length === 0 || selectedEnd.length === 0) { print('⚠️ Select at least one Start and End class.'); return; }
-  //   if (activeMaps.length === 0) { print('⚠️ No map registered.'); return; }
-  //   clearPreview();
-  //   var trainImg = exports.getTrainingImage();
-  //   if (!trainImg) return;
-  //   var vis = {palette: ['black', 'red'], min: 0, max: 1};
-  //   var mTrain = activeMaps[0];
-  //   var layerTrain = mTrain.addLayer(trainImg, vis, 'Change Detection');
-  //   layers.push({map: mTrain, layer: layerTrain});
-  //   var legendTrain = ui.Panel({style: {position: 'bottom-right', padding: '8px 15px', backgroundColor: 'white'}});
-  //   legendTrain.add(ui.Label('Change Detection', {fontWeight: 'bold', fontSize: '14px', margin: '0 0 4px 0'}));
-  //   var rowTrain = ui.Panel({
-  //     widgets: [
-  //       ui.Label({style:{backgroundColor: 'red', padding:'8px', margin:'0 0 4px 0', border:'1px solid black'}}),
-  //       ui.Label({value:'Changed pixels', style:{margin:'0 0 4px 6px'}})
-  //     ],
-  //     layout: ui.Panel.Layout.flow('horizontal')
-  //   });
-  //   legendTrain.add(rowTrain);
-  //   // mTrain.add(legendTrain);
-  //   legends.push({map: mTrain, legend: legendTrain});
-  //   loadedPreviewLayer = trainImg;
-  // });
+  
   runBtn.onClick(function () {
-    if (!roi_boundary) { print('⚠️ Set ROI from main panel first.'); return; }
-    if (!years.validation.start || !years.validation.end) { print('⚠️ Validation years not set.'); return; }
+    if (!roi_boundary) { print('Set ROI from main panel first.'); return; }
+    if (!years.validation.start || !years.validation.end) { print('Validation years not set.'); return; }
     if (selectedStart.length === 0 || selectedEnd.length === 0) { 
-      print('⚠️ Select at least one Start and End class.'); 
+      print('Select at least one Start and End class.'); 
       return; 
     }
-    if (activeMaps.length === 0) { print('⚠️ No map registered.'); return; }
+    if (activeMaps.length === 0) { print('No map registered.'); return; }
   
     var m = activeMaps[0];
   
@@ -230,7 +188,7 @@ exports.getPanel = function() {
       ui.util.setTimeout(keepRestorationMarkerOnTopFn, 100);
     }
   
-    print('✅ Change Detection preview updated');
+    print('Change Detection preview updated');
   });
 
   clearBtn.onClick(clearPreview);
@@ -294,10 +252,8 @@ exports.setValues = function(changeDetectionValues) {
     });
     selectedEnd = keys.filter(function(key) { return endChecks[key].getValue(); });
   }
-  print("✅ Change Detection checkboxes updated for start:", selectedStart, "end:", selectedEnd);
+  print("Change Detection checkboxes updated for start:", selectedStart, "end:", selectedEnd);
 };
-
-
 
 // ------------------- Clear Map Function -------------------
 function clearMap() {
@@ -344,7 +300,6 @@ exports.clearMap = clearMap;
 
 // Keep existing exports
 exports.clearPreview = clearMap; // alias for backward compatibility
-
 
 exports.getRule = function(mode) {
   // Check if any classes are selected
