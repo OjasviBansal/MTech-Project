@@ -13,6 +13,7 @@ var one_map = require('.../ONE_map');
 var soil = require('.../soil');
 var naturalForests = require('.../natural_forests');
 var temp = require('.../temp');
+var spatial =require('.../spatial');
 ```
 
 Each module has: 
