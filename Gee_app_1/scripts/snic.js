@@ -1,7 +1,5 @@
-// SNIC with tiling + safe empty cluster handling
 var snic_2 = function(roi_boundary, filtered_raster) {
 
-  // ---- Ensure geometry ----
   var roi_geometry;
   if (roi_boundary instanceof ee.Feature) {
     roi_geometry = roi_boundary.geometry();
@@ -11,7 +9,6 @@ var snic_2 = function(roi_boundary, filtered_raster) {
     throw new Error('roi_boundary must be ee.Feature or ee.Geometry');
   }
 
-  // ---- SNIC helper ----
   function apply_snic(image) {
     var snic = ee.Algorithms.Image.Segmentation.SNIC({
       image: image,
@@ -22,7 +19,6 @@ var snic_2 = function(roi_boundary, filtered_raster) {
     return snic.select('clusters');
   }
 
-  // ---- Embedding helper ----
   function get_embedding_image(roi, start_date, end_date) {
     var embedding = ee.ImageCollection("GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL")
       .filterDate(start_date, end_date)
@@ -39,11 +35,9 @@ var snic_2 = function(roi_boundary, filtered_raster) {
   var startDate = '2024-01-01';
   var endDate = '2025-01-01';
 
-  // ---- Split ROI into tiles ----
   var roiBounds = roi_geometry.bounds();
   var grid = roiBounds.coveringGrid('EPSG:4326', 0.5); // 0.5 deg ~ 55km tiles
 
-  // ---- Per-tile processing ----
   var processTile = function(tileFeature) {
     var tileGeom = ee.Feature(tileFeature).geometry();
 
@@ -71,7 +65,6 @@ var snic_2 = function(roi_boundary, filtered_raster) {
 
     var intersecting_clusters = ts_vectors.filterBounds(polygons);
 
-    // --- Handle empty clusters safely ---
     var labels = intersecting_clusters.aggregate_array('label');
     var hasLabels = labels.size().gt(0);
 
@@ -84,14 +77,13 @@ var snic_2 = function(roi_boundary, filtered_raster) {
             ee.List.repeat(1, labels.size())
           )
         ),
-        ee.Image(0).updateMask(ee.Image(0)) // return empty masked image
+        ee.Image(0).updateMask(ee.Image(0)) 
       )
     );
 
     return intersecting_cluster_raster;
   };
 
-  // ---- Map over all tiles and mosaic ----
   var clusterImages = grid.map(function(tile) {
     return processTile(tile);
   });
@@ -100,5 +92,4 @@ var snic_2 = function(roi_boundary, filtered_raster) {
   return mosaicClusters.clip(roi_geometry);
 };
 
-// Export
 exports.apply = snic_2;
