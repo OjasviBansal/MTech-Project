@@ -3,7 +3,6 @@ var loadedImage = null;
 var activeMaps = [Map];
 var keepRestorationMarkerOnTopFn = null;
 
-// Module-level array to hold checkbox references
 var checkboxes = [];
 
 exports.setROI = function(roi, mapInstance) {
@@ -17,10 +16,6 @@ exports.setKeepMarkerOnTop = function(fn) {
   keepRestorationMarkerOnTopFn = fn;
 };
 
-
-// exports.getLoadedImage = function() {
-//   return loadedImage;
-// };
 // ----------------- Updated getLoadedImage -----------------
 exports.getLoadedImage = function() {
   if (!roi_boundary) return null;
@@ -28,14 +23,13 @@ exports.getLoadedImage = function() {
   // Load terrain raster
   var terrain = ee.Image("projects/corestack-datasets/assets/datasets/terrain/pan_india_terrain_raster_fabdem").clip(roi_boundary);
   
-  // Collect currently selected checkbox values
   var selectedValues = [];
   checkboxes.forEach(function(cb, index) {
     if (cb.getValue()) selectedValues.push(terrainClasses[index].value);
   });
 
   if (selectedValues.length === 0) {
-    loadedImage = null;  // nothing selected
+    loadedImage = null; 
     return null;
   }
 
@@ -123,17 +117,6 @@ exports.getPanel = function() {
   buttonPanel.add(clearButton);
   panel.add(buttonPanel);
 
-  // var clearMap = function() {
-  //   activeMaps.forEach(function(m) {
-  //     m.layers().forEach(function(layer) {
-  //       if (layer.getName() && layer.getName().indexOf('Terrain') === 0) m.remove(layer);
-  //     });
-  //     terrainUtils.legends.forEach(function(l) { m.widgets().remove(l); });
-  //   });
-  //   terrainUtils.legends = [];
-  //   loadedImage = null;
-  // };
-
   loadButton.onClick(function() {
     if (!roi_boundary) { ui.alert('Error', 'Please set ROI first.'); return; }
     clearMap();
@@ -181,8 +164,6 @@ exports.getPanel = function() {
   return panel;
 };
 
-
-
 // ------------------- Remove legend function -------------------
 function removeLegend() {
   terrainUtils.legends.forEach(function(legend) {
@@ -193,9 +174,7 @@ function removeLegend() {
   terrainUtils.legends = [];
 }
 
-// ------------------- Clear map function (updated) -------------------
 function clearMap() {
-  // Remove layers
   activeMaps.forEach(function(m) {
     m.layers().forEach(function(layer) {
       if (layer.getName() && layer.getName().indexOf('Terrain') === 0) {
@@ -204,13 +183,11 @@ function clearMap() {
     });
   });
 
-  // Remove legends
   removeLegend();
 
   loadedImage = null;
 }
 
-// ------------------- Export functions -------------------
 exports.clearMap = clearMap;
 exports.removeLegend = removeLegend;
 
@@ -218,7 +195,6 @@ exports.removeLegend = removeLegend;
 exports.getRule = function() {
   if (!roi_boundary) return null;
 
-  // Collect selected terrain class names
   var selectedNames = [];
   checkboxes.forEach(function(cb, i) {
     if (cb.getValue()) selectedNames.push(terrainClasses[i].name);
@@ -226,6 +202,6 @@ exports.getRule = function() {
 
   if (selectedNames.length === 0) return null;
 
-  return selectedNames;  // just the selected class labels
+  return selectedNames;  
 };
 
