@@ -194,7 +194,7 @@ exports.getPanel = function() {
       lddUtils.legends.push(legend);
     });
     
-    // 🔥 KEEP ROI Boundary & ROI Center ON TOP
+    // KEEP ROI Boundary & ROI Center ON TOP
     if (keepRestorationMarkerOnTopFn) {
       ui.util.setTimeout(keepRestorationMarkerOnTopFn, 100);
     }
@@ -220,7 +220,7 @@ exports.tickCheckboxForValue = function(value) {
   var idx = lddClasses.indexOf(match);
   if (checkboxes[idx]) {
     checkboxes[idx].setValue(true);
-    print("✅ LDD checkbox ticked for:", match.name, "(value:", value, ")");
+    print("LDD checkbox ticked for:", match.name, "(value:", value, ")");
   }
 };
 
@@ -240,7 +240,7 @@ exports.setValues = function(values) {
     }
   });
 
-  print("✅ LDD checkboxes updated for values:", values);
+  print("LDD checkboxes updated for values:", values);
 };
 
 
@@ -253,23 +253,19 @@ var clearMap = function() {
   });
   lddUtils.layers = [];
 
-  // Remove all legends
   lddUtils.legends.forEach(function(legend) {
     activeMaps.forEach(function(m) {
       m.widgets().remove(legend);
     });
   });
   lddUtils.legends = [];
-
-  // Reset loaded image
   loadedImage = null;
 
-  // Optional: uncheck all checkboxes
   checkboxes.forEach(function(cb) {
     cb.setValue(false);
   });
 
-  print("✅ LDD map layers and legends cleared.");
+  print("LDD map layers and legends cleared.");
 };
 
 // ------------------- Export Clear Map -------------------
