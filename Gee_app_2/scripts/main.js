@@ -2,7 +2,6 @@
 var lulcAnalysis = require('users/ojasvibansal_total_precipitation/Ecotype_App:gee-app2/lulc');
 var rainfall = require('users/ojasvibansal_total_precipitation/Ecotype_App:gee-app2/bioclim');
 var elevation = require('users/ojasvibansal_total_precipitation/Ecotype_App:gee-app2/elevation');
-// var wasteland = require('users/ojasvibansal_total_precipitation/Ecotype_App:gee-app2/wasteland');
 var ldd = require('users/ojasvibansal_total_precipitation/Ecotype_App:gee-app2/ldd');
 var changeDetection = require('users/ojasvibansal_total_precipitation/Ecotype_App:gee-app2/change_det');
 var fire = require('users/ojasvibansal_total_precipitation/Ecotype_App:gee-app2/fire');
@@ -12,7 +11,7 @@ var ones = require('users/ojasvibansal_total_precipitation/Ecotype_App:gee-app2/
 var soil = require('users/ojasvibansal_total_precipitation/Ecotype_App:gee-app2/soil');
 var naturalForests = require('users/ojasvibansal_total_precipitation/Ecotype_App:gee-app2/natural_forests');
 var temp = require('users/ojasvibansal_total_precipitation/Ecotype_App:gee-app2/temp');
-
+var spatial = require('users/ojasvibansal_total_precipitation/Ecotype_App:gee-app2/spatial');
 // ================= GLOBAL VARIABLES =================
 var roi_boundary = null;
 var trainYears = {preDeg: null, restoration: null};
@@ -59,17 +58,6 @@ controlPanel.add(ui.Label({
 }));
 
 // ================= STEP 1: Region selection =================
-// function makeSquare(lon, lat) {
-//   var halfSize = 2500; // meters = 2.5 km
-//   return ee.Geometry.Rectangle([
-//     lon - (halfSize / 111320),
-//     lat - (halfSize / 110540),
-//     lon + (halfSize / 111320),
-//     lat + (halfSize / 110540)
-//   ]);
-// }
-
-// Function: Get ROI as the ecoregion containing a point
 function getEcoRegionROI(lon, lat) {
   var ecoRegions = ee.FeatureCollection('RESOLVE/ECOREGIONS/2017');
   var countries = ee.FeatureCollection("FAO/GAUL_SIMPLIFIED_500m/2015/level0");
@@ -101,7 +89,6 @@ var projectRegions = [
     elevation: [1500, 3000],
     terrain: [1,2,3,6,7,8,9,10,11],
     change_detection: [[1,2,4], [1,3,8]],
-    // wasteland: [2,4,6],
     lulc: [7, 9, 10, 11, 12],
     project_name:'Kedarnath Bugyal Conservation Project under Conservation Catalyst Programme',
     description:'With the financial and mentoring support from WWF-India, the Gramya Sikshan Paryavaran Sanstha is engaged in community led conservation of Manpai Bugyal (alipine) located inside the Kedarnath Wildlife Sanctuary in Uttarakhand (India). Manpai Bugyal of the Wildlife Sanctuary, which is spread in about 200 hectare area between 3600 to 4000 meter elevations. The Manpai Bugyal has been traditionally recognized as holly land that has strong connection with local religious and cultural practices. However, the effectiveness of traditionally organized activities of dependent villagers related to culture, religion, sheep rearing and harvesting of herbs has deteriorated. Major reasons behind this deterioration of social safeguards include inability of traditional social system to recognize and respond new challenges of increasing anthropogenic pressure and rapid commercialization of herbs and other alpine resources. The opportunity that we have in hand in order to conserve these Alpine rangelands is existence of locally formed people’s institution for religious and cultural interventions in the alpine and socially organized form of summer sheep rearing in the region. These two socially imbedded systems that interact with Bugyals (alpines) will be mobilized to educate and monitor sustainable harvesting of herbs for commercial uses. Key Project Activities: Educate all stakeholders, Community led assessment, Documentation of traditional practices and beliefs, Developing capacity of stakeholders',
@@ -120,20 +107,9 @@ var projectRegions = [
     lulc: [6],
     project_name:'Flora of the Presidency of Madras - Pandalgudi',
     description:'Finding reference sites similar to pandalgudi polygons',
-    contact:'Anand Kr.p - anand82546@gmail.com / 8979977330',
+    contact:'Anand Kr.p - anand82546@gmail.com',
     usecase: 'Finding reference sites'
   },
-  // {
-  //   name: 'Pandalgudi2, Tamil Nadu',
-  //   roi: getEcoRegionROI(77.7604, 11.3670),
-  //   center: [77.7604, 11.3670],
-  //   years: [1985, 2018, 2018, 2024],
-  //   rainfall: [500, 900],
-  //   elevation: [60, 120],
-  //   terrain: [5,6],
-  //   change_detection: [[2], [2]],
-  //   lulc: [6]
-  // },
   {
     name: 'Aravali Biodiversity Park, Gurugram',
     roi: getEcoRegionROI(77.24, 28.57),
@@ -142,12 +118,11 @@ var projectRegions = [
     rainfall: [300, 900],
     elevation: [100, 300],
     terrain: [5,6,9],
-    // wasteland: [1,2],
     change_detection: [[1,2,3,4], [3,8]],
     lulc: [7,8,9,10,11,12],
     project_name:'Aravali Biodiversity Park, Gurugram',
     description:'Earlier a mining quarry and stone crushing site',
-    contact:'Vijay Dhasmana - 9999050664',
+    contact:'Vijay Dhasmana',
     usecase: 'Scaling up successful restoration'
   },
   {
@@ -158,7 +133,6 @@ var projectRegions = [
     rainfall: [1200,4000],
     elevation: [1000, 3000],
     terrain: [6,7,8,10],
-    // wasteland: [2,4,6,7,8,11],
     change_detection: [[1,2,3,4], [3,8]],
     lulc: [7,8,9,10,11,12],
     project_name:'Ammagal Ecological Restoration of shola-grassland project ',
@@ -174,12 +148,11 @@ var projectRegions = [
     rainfall: [2000,3500],
     elevation: [1000, 3000],
     terrain: [1,2,3,8,9,11],
-    // wasteland: [2,4,6,7],
     change_detection: [[1,2,3,8], [3,8]],
     lulc: [7,8,9,10,11,12],
     project_name:'Project SERVE',
     description:'Save the Environment and Regenerate Vital Employment (SERVE) is a comprehensive initiative aimed at environmental conservation and livelihood security in the Darjeeling and Kalimpong hills. The project aligns with the UN’s Decade of Ecosystem Restoration (2021-2030) and addresses key regional challenges such as forest degradation, habitat fragmentation, water scarcity, and human-wildlife conflicts.',
-    contact:'Rishi Kumar Sharma - 9643712087/rksharma@wwfindia.net',
+    contact:'Rishi Kumar Sharma - rksharma@wwfindia.net',
     usecase: 'Scaling up successful restoration'
   },
   {
@@ -190,7 +163,6 @@ var projectRegions = [
     rainfall: [200,800],
     elevation: [400, 1200],
     terrain: [5,6,8,9],
-    // wasteland: [2,4,6],
     change_detection: [[1,2,3,4,8],[3,8]],
     lulc: [7,8,9,10,11,12],
     project_name:'Medius Earth',
@@ -206,8 +178,6 @@ var regionDropdown = ui.Select({
   style: {stretch: 'horizontal'}
 });
 
-
-// --- Reusable Go To My Location button ---
 function createGoToLocationButton(map, labelText) {
   return ui.Button({
     label: labelText,
@@ -236,7 +206,6 @@ function keepReferenceLayersOnTop() {
   var roiCenterObj = null;
   var andLayerObj = null;
 
-  // 1️⃣ Remove ROI layers temporarily
   for (var i = layers.length() - 1; i >= 0; i--) {
     var lyr = layers.get(i);
     var name = lyr.getName();
@@ -257,7 +226,6 @@ function keepReferenceLayersOnTop() {
     }
   }
 
-  // 2️⃣ Re-add them LAST → ensures they are on top
   if (andLayerObj) {
     map.addLayer(
       andLayerObj,
@@ -302,18 +270,17 @@ naturalForests.setKeepMarkerOnTop(keepReferenceLayersOnTop);
 function showAndOnMap() {
   if (!roi_boundary) return;
 
-  // Collect loaded images with names
   var layers = [
     {image: lulcAnalysis.getLoadedImage ? lulcAnalysis.getLoadedImage() : null, name: 'LULC'},
     {image: rainfall.getLoadedImage ? rainfall.getLoadedImage() : null, name: 'Rainfall'},
     {image: temp.getLoadedImage ? temp.getLoadedImage() : null, name: 'Temperature'},
     {image: elevation.getLoadedImage ? elevation.getLoadedImage() : null, name: 'Elevation'},
     {image: soil.getLoadedImage ? soil.getLoadedImage() : null, name: 'Soil'},
-    // {image: wasteland.getLoadedImage ? wasteland.getLoadedImage() : null, name: 'Wasteland'},
     {image: ldd.getLoadedImage ? ldd.getLoadedImage() : null, name: 'Land Degradation'},
     {image: changeDetection.getInferenceImage ? changeDetection.getInferenceImage() : null, name: 'Change Detection'},  //inferYears.preDeg, inferYears.current
     {image: fire.getLoadedImage ? fire.getLoadedImage(inferYears.preDeg, inferYears.current) : null, name: 'Fire'},
     {image: terrain.getLoadedImage ? terrain.getLoadedImage() : null, name: 'Terrain'},
+    {image: spatial.getLoadedImage ? spatial.getLoadedImage() : null, name: 'Spatial'},
     {image: ones.getOneMap ? ones.getOneMap() : null, name: 'Open Natural Ecosystems (ONEs)'},
     {image: naturalForests.getLoadedImage ? naturalForests.getLoadedImage() : null, name: 'Natural Forests' }
   ];
@@ -324,18 +291,17 @@ function showAndOnMap() {
     'Temperature': ['#ff00ff'],
     'Elevation': ['brown'],
     'Soil': ['#8D6E63'],
-    // 'Wasteland': ['purple'],
     'Land Degradation': ['orange'],
     'Change Detection': ['red'],
     'Fire': ['pink'],
     'Terrain': ['green'],
+    'Spatial': ['#9c27b0'],
     'Open Natural Ecosystems (ONEs)': ['#00ffaa'],
     'Natural Forests': ['teal'],
     'AND of Layers': ['yellow']
   };
   
-  // var desiredOrder = ['Rainfall','Elevation','Soil','Terrain','Wasteland','Land Degradation','Open Natural Ecosystems (ONEs)','Fire','Change Detection','LULC'];
-  var desiredOrder = ['Rainfall','Temperature','Elevation','Soil','Terrain','Fire','Change Detection','LULC','Open Natural Ecosystems (ONEs)','Land Degradation','Natural Forests'];
+  var desiredOrder = ['Rainfall','Temperature','Elevation','Soil','Terrain','Spatial','Fire','Change Detection','LULC','Open Natural Ecosystems (ONEs)','Land Degradation','Natural Forests'];
 
   // Filter out nulls
   var filteredLayers = layers.filter(function(l) {
@@ -351,7 +317,6 @@ function showAndOnMap() {
   var layerCount = mapLayers.length();
   for (var j = layerCount - 1; j >= 0; j--) {
     var layer = mapLayers.get(j);
-    // Use regular function instead of arrow
     var shouldRemove = filteredLayers.some(function(l) {
       return l.name === layer.getName();
     });
@@ -373,28 +338,6 @@ function showAndOnMap() {
   filteredLayers.forEach(function(l){
     print(l.name, l.image.bandNames());
   });
-  
-//   // Export each filtered layer for debugging
-// filteredLayers.forEach(function(l) {
-
-//   var img = ee.Image(l.image)
-//     .clip(roi_boundary)
-//     .select([0])
-//     .gt(0)
-//     .unmask(0)
-//     .toByte()
-//     .rename(l.name.replace(/\s+/g, '_'));
-
-//   Export.image.toAsset({
-//     image: img,
-//     description: 'DEBUG_' + l.name.replace(/\s+/g, '_'),
-//     assetId: 'projects/ee-ojasvi/assets/debug_' + l.name.replace(/\s+/g, '_'),
-//     region: roi_boundary,
-//     scale: 30,
-//     maxPixels: 1e13
-//   });
-
-// });
   
   // 1. Create a base image of 1s (True) to start the AND chain
   var andImage = ee.Image(1).clip(roi_boundary);
@@ -468,18 +411,17 @@ function showAndOnMap() {
 function showAndOnMap2() {
   if (!roi_boundary) return;
 
-  // Collect loaded images with names
   var layers = [
     {image: lulcAnalysis.getLoadedImage ? lulcAnalysis.getLoadedImage() : null, name: 'LULC'},
     {image: rainfall.getLoadedImage ? rainfall.getLoadedImage() : null, name: 'Rainfall'},
     {image: temp.getLoadedImage ? temp.getLoadedImage() : null, name: 'Temperature'},
     {image: elevation.getLoadedImage ? elevation.getLoadedImage() : null, name: 'Elevation'},
     {image: soil.getLoadedImage ? soil.getLoadedImage() : null, name: 'Soil'},
-    // {image: wasteland.getLoadedImage ? wasteland.getLoadedImage() : null, name: 'Wasteland'},
     {image: ldd.getLoadedImage ? ldd.getLoadedImage() : null, name: 'Land Degradation'},
     {image: changeDetection.getInferenceImage ? changeDetection.getInferenceImage() : null, name: 'Change Detection'}, //inferYears.preDeg, inferYears.current
     {image: fire.getLoadedImage ? fire.getLoadedImage(inferYears.preDeg, inferYears.current) : null, name: 'Fire'},
     {image: terrain.getLoadedImage ? terrain.getLoadedImage() : null, name: 'Terrain'},
+    {image: spatial.getLoadedImage ? spatial.getLoadedImage() : null, name: 'Spatial'},
     {image: ones.getOneMap ? ones.getOneMap() : null, name: 'Open Natural Ecosystems (ONEs)'},
     {image: naturalForests.getLoadedImage ? naturalForests.getLoadedImage() : null, name: 'Natural Forests'}
   ];
@@ -490,18 +432,17 @@ function showAndOnMap2() {
     'Temperature': ['#ff00ff'],
     'Elevation': ['brown'],
     'Soil': ['#8D6E63'],
-    // 'Wasteland': ['purple'],
     'Land Degradation': ['orange'],
     'Change Detection': ['red'],
     'Fire': ['pink'],
     'Terrain': ['green'],
+    'Spatial': ['#9c27b0'],
     'Open Natural Ecosystems (ONEs)': ['#00ffaa'],
     'Natural Forests': ['teal'],
     'AND of Layers': ['yellow']
   };
   
-  // var desiredOrder = ['Rainfall','Elevation','Terrain','Wasteland','Land Degradation','Open Natural Ecosystems (ONEs)','Fire','Change Detection','LULC'];
-  var desiredOrder = ['Rainfall','Temperature','Elevation','Soil', 'Terrain','Fire','Change Detection','LULC', 'Open Natural Ecosystems (ONEs)', 'Land Degradation','Natural Forests'];
+  var desiredOrder = ['Rainfall','Temperature','Elevation','Soil', 'Terrain','Spatial','Fire','Change Detection','LULC', 'Open Natural Ecosystems (ONEs)', 'Land Degradation','Natural Forests'];
 
   // Filter out nulls
   var filteredLayers = layers.filter(function(l) {
@@ -543,15 +484,6 @@ function showAndOnMap2() {
     );
   });
 
-
-  // Compute AND of all layers
-  // var andImage = filteredLayers[0].image.gt(0).selfMask();
-  // for (var i = 1; i < filteredLayers.length; i++) {
-  //   andImage = andImage.and(filteredLayers[i].image.gt(0).selfMask());
-  // }
-  // andImage = andImage.clip(roi_boundary).selfMask();
-  // currentAndImage = andImage;
-  // Start with a constant image of 1s
   var andImage = ee.Image(1).clip(roi_boundary);
 
   filteredLayers.forEach(function(l) {
@@ -619,7 +551,7 @@ var setRegionBtn = ui.Button({
   label: 'Set Location',
   onClick: function() {
     var selectedName = regionDropdown.getValue();
-    if (!selectedName) { print('⚠️ Please select a project region'); return; }
+    if (!selectedName) { print('Please select a project region'); return; }
 
     // var selected = null;
     for (var i = 0; i < projectRegions.length; i++) {
@@ -659,36 +591,29 @@ var setRegionBtn = ui.Button({
     if (selected.years && selected.years.length === 4) {
       var preDegTrain = selected.years[0];
       var restorationStart = selected.years[1];
-      // var preDegInfer = selected.years[2];
       var preDegInfer = preDegTrain;
       var currentYear = selected.years[3];
-    
-      // Update global variables
+  
       trainYears.preDeg = preDegTrain;
       trainYears.restoration = restorationStart;
       inferYears.preDeg = preDegInfer;
       inferYears.current = currentYear;
     
-      // Update textboxes
       preDegTrainBox.setValue(String(preDegTrain));
       restorationStartBox.setValue(String(restorationStart));
-      // preDegInferBox.setValue(String(preDegInfer));
       currentYearBox.setValue(String(currentYear));
-    
-      // Update modules immediately
+      
       lulcAnalysis.setYears(preDegInfer, currentYear);
-      // changeDetection.setYears(preDegTrain, restorationStart, 'validation');
       changeDetection.setYears(preDegInfer, currentYear, 'test');
-      // fire.setYears(preDegTrain, restorationStart, 'validation');
       fire.setYears(preDegInfer, currentYear, 'test');
+      spatial.setYears(preDegInfer, currentYear, 'test')
     
       print('Years initialized from region:', selected.years);
     }
 
 
     // Set ROI for modules
-    // var modules = [rainfall, elevation, soil, terrain, ldd, wasteland, fire, changeDetection, lulcAnalysis, ones];
-    var modules = [rainfall, temp, elevation, soil, terrain, ldd, fire, changeDetection, lulcAnalysis, ones, naturalForests];
+    var modules = [rainfall, temp, elevation, soil, terrain, spatial, ldd, fire, changeDetection, lulcAnalysis, ones, naturalForests];
     for (var i = 0; i < modules.length; i++) {
       if (modules[i].setROI) {
         modules[i].setROI(roi_boundary, map);
@@ -700,10 +625,9 @@ var setRegionBtn = ui.Button({
     if (selected.temp) temp.setRange(selected.temp[0], selected.temp[1]);
     if (selected.elevation) elevation.setRange(selected.elevation[0], selected.elevation[1]);
     if (selected.terrain) terrain.setValues(selected.terrain);
+    if (selected.spatial) spatial.setValues(selected.spatial);
     if (selected.ldd) ldd.setValues(selected.ldd);
-    // if (selected.wasteland) wasteland.setValues(selected.wasteland);
     if (selected.fire) fire.setFireValue(selected.fire);
-    // if (selected.changeDetection) changeDetection.setValues(selected.change_detection);
     if (selected.change_detection) { // Changed from changeDetection to change_detection
       print("Calling setValues with:", selected.change_detection);
       changeDetection.setValues(selected.change_detection);
@@ -712,9 +636,6 @@ var setRegionBtn = ui.Button({
     if (selected.ones) ones.setValues(selected.ones);
     if (selected.naturalForests) naturalForests.setValues(selected.naturalForests);
 
-    // map.centerObject(roi_boundary, 5);
-
-    // Draw boundary
     var roiOutline = ee.Image().byte().paint({
       featureCollection: ee.FeatureCollection(roi_boundary),
       color: 1,
@@ -756,7 +677,7 @@ var setRegionBtn = ui.Button({
     var currentYear = parseInt(currentYearBox.getValue());
 
     if ([preDegTrain, restorationStart, preDegInfer, currentYear].some(isNaN)) {
-      print('⚠️ Enter valid numeric years for all fields');
+      print('Enter valid numeric years for all fields');
       return;
     }
 
@@ -768,15 +689,16 @@ var setRegionBtn = ui.Button({
 
     // Update modules
     lulcAnalysis.setYears(preDegInfer, currentYear);
-    changeDetection.setYears(preDegTrain, restorationStart, 'validation'); // training
-    changeDetection.setYears(preDegInfer, currentYear, 'test'); // inference
-    fire.setYears(preDegTrain, restorationStart, 'validation'); // training
-    fire.setYears(preDegInfer, currentYear, 'test'); // inference
+    changeDetection.setYears(preDegTrain, restorationStart, 'validation');
+    changeDetection.setYears(preDegInfer, currentYear, 'test');
+    fire.setYears(preDegTrain, restorationStart, 'validation');
+    fire.setYears(preDegInfer, currentYear, 'test');
+    spatial.setYears(preDegInfer, currentYear, 'test'); 
 
     print('Years set: Training:', preDegTrain, restorationStart, 'Inference:', preDegInfer, currentYear);
 
     // ================= AUTOMATICALLY COMPUTE AND SHOW =================
-    showAndOnMap(); // This will compute AND and display on map immediately
+    showAndOnMap(); 
   }
 });
 
@@ -785,7 +707,7 @@ var clearRegionBtn = ui.Button({
   onClick: function() {
     roi_boundary = null;
     map.layers().reset();
-    var allModules = [lulcAnalysis, rainfall, temp, elevation, ldd, changeDetection, fire, terrain, ones, naturalForests];
+    var allModules = [lulcAnalysis, rainfall, temp, elevation, ldd, changeDetection, fire, terrain, spatial, ones, naturalForests];
     allModules.forEach(function(mod) {
       if (mod.clearMap) {  // module has its own clear function
         mod.clearMap();     // clear layers + legends
@@ -847,7 +769,7 @@ var applyJsonTextBtn = ui.Button({
     var text = jsonTextBox.getValue();
 
     if (!text || text.trim() === '') {
-      print('❌ No JSON pasted in textbox');
+      print('No JSON pasted in textbox');
       return;
     }
 
@@ -856,7 +778,7 @@ var applyJsonTextBtn = ui.Button({
 
       applyRulesFromJSON(JSON.stringify(obj));
 
-      print('✅ Rules applied from textbox JSON');
+      print('Rules applied from textbox JSON');
       
       if (obj.metadata) {
 
@@ -880,11 +802,11 @@ var applyJsonTextBtn = ui.Button({
           projectUseCase = obj.metadata.use_case;
         }
 
-        print('📌 Project metadata loaded from JSON');
+        print('Project metadata loaded from JSON');
       }
 
     } catch (e) {
-      print('❌ Invalid JSON. Error: ' + e);
+      print('Invalid JSON. Error: ' + e);
     }
   }
 });
@@ -940,7 +862,7 @@ var saveMetadataBtn = ui.Button({
     projectContact = contactBox.getValue();
     projectUseCase = useCaseDropdown.getValue();
 
-    print('✅ Project Metadata Saved');
+    print('Project Metadata Saved');
     print('Project Name:', projectName);
     print('Description:', projectDescription);
     print('Contact:', projectContact);
@@ -954,7 +876,6 @@ controlPanel.add(saveMetadataBtn);
 // ================= STEP 2: Unified Temporal Inputs (4 years) =================
 var preDegTrainBox = ui.Textbox({placeholder: 'Base year', value: '1985'});
 var restorationStartBox = ui.Textbox({placeholder: 'Restoration start', value: '2010'});
-// var preDegInferBox = ui.Textbox({placeholder: 'Pre-degradation year', value: '2010'});
 var currentYearBox = ui.Textbox({placeholder: 'Current year', value: '2022'});
 
 var yearPanel = ui.Panel({
@@ -976,53 +897,10 @@ yearPanel.add(ui.Panel([
   preDegTrainBox
 ], ui.Panel.Layout.flow('horizontal')));
 
-
-
-// yearPanel.add(ui.Panel([
-//   ui.Label('Pre-deg (inference):'),
-//   preDegInferBox
-// ], ui.Panel.Layout.flow('horizontal')));
-
 mask_yearPanel.add(ui.Panel([
   ui.Label('Current year :'),
   currentYearBox
 ], ui.Panel.Layout.flow('horizontal')));
-
-
-// Modify the Set Years button to also compute AND immediately
-// var setYearsBtn = ui.Button({
-//   label: 'Set Years',
-//   onClick: function() {
-//     var preDegTrain = parseInt(preDegTrainBox.getValue());
-//     var restorationStart = parseInt(restorationStartBox.getValue());
-//     // var preDegInfer = parseInt(preDegInferBox.getValue());
-//     var preDegInfer = preDegTrain;
-//     var currentYear = parseInt(currentYearBox.getValue());
-
-//     if ([preDegTrain, restorationStart, preDegInfer, currentYear].some(isNaN)) {
-//       print('⚠️ Enter valid numeric years for all fields');
-//       return;
-//     }
-
-//     // Set years
-//     trainYears.preDeg = preDegTrain;
-//     trainYears.restoration = restorationStart;
-//     inferYears.preDeg = preDegInfer;
-//     inferYears.current = currentYear;
-
-//     // Update modules
-//     lulcAnalysis.setYears(preDegInfer, currentYear);
-//     changeDetection.setYears(preDegTrain, restorationStart, 'validation'); // training
-//     changeDetection.setYears(preDegInfer, currentYear, 'test'); // inference
-//     fire.setYears(preDegTrain, restorationStart, 'validation'); // training
-//     fire.setYears(preDegInfer, currentYear, 'test'); // inference
-
-//     print('Years set: Training:', preDegTrain, restorationStart, 'Inference:', preDegInfer, currentYear);
-
-//     // ================= AUTOMATICALLY COMPUTE AND SHOW =================
-//     showAndOnMap(); // This will compute AND and display on map immediately
-//   }
-// });
 
 
 var setYearsBtn1 = ui.Button({
@@ -1030,26 +908,18 @@ var setYearsBtn1 = ui.Button({
   onClick: function() {
     var preDegTrain = parseInt(preDegTrainBox.getValue());
     var restorationStart = parseInt(restorationStartBox.getValue());
-    // var preDegInfer = parseInt(preDegInferBox.getValue());
-    // var preDegInfer = preDegTrain;
-    // var currentYear = parseInt(currentYearBox.getValue());
 
     if ([preDegTrain, restorationStart].some(isNaN)) {
-      print('⚠️ Enter valid numeric years for all fields');
+      print('Enter valid numeric years for all fields');
       return;
     }
 
     // Set years
     trainYears.preDeg = preDegTrain;
     trainYears.restoration = restorationStart;
-    // inferYears.preDeg = preDegInfer;
-    // inferYears.current = currentYear;
-
-    // Update modules
-    // lulcAnalysis.setYears(preDegInfer, currentYear);
-    changeDetection.setYears(preDegTrain, restorationStart, 'validation'); // training
-    // changeDetection.setYears(preDegInfer, currentYear, 'test'); // inference
-    fire.setYears(preDegTrain, restorationStart, 'validation'); // training
+ 
+    changeDetection.setYears(preDegTrain, restorationStart, 'validation'); 
+    fire.setYears(preDegTrain, restorationStart, 'validation'); 
     // fire.setYears(preDegInfer, currentYear, 'test'); // inference
 
     print('Years set: Training:', preDegTrain, restorationStart);
@@ -1063,28 +933,23 @@ var setYearsBtn2 = ui.Button({
   label: 'Set Years',
   onClick: function() {
     var preDegTrain = parseInt(preDegTrainBox.getValue());
-    // var restorationStart = parseInt(restorationStartBox.getValue());
-    // var preDegInfer = parseInt(preDegInferBox.getValue());
     var preDegInfer = preDegTrain;
     var currentYear = parseInt(currentYearBox.getValue());
 
     if ([preDegInfer, currentYear].some(isNaN)) {
-      print('⚠️ Enter valid numeric years for all fields');
+      print('Enter valid numeric years for all fields');
       return;
     }
 
     // Set years
-    // trainYears.preDeg = preDegTrain;
-    // trainYears.restoration = restorationStart;
     inferYears.preDeg = preDegInfer;
     inferYears.current = currentYear;
 
     // Update modules
     lulcAnalysis.setYears(preDegInfer, currentYear);
-    // changeDetection.setYears(preDegTrain, restorationStart, 'validation'); // training
-    changeDetection.setYears(preDegInfer, currentYear, 'test'); // inference
-    // fire.setYears(preDegTrain, restorationStart, 'validation'); // training
-    fire.setYears(preDegInfer, currentYear, 'test'); // inference
+    changeDetection.setYears(preDegInfer, currentYear, 'test'); 
+    fire.setYears(preDegInfer, currentYear, 'test');
+    spatial.setYears(preDegInfer, currentYear, 'test');
 
     print('Inference:', preDegInfer, currentYear);
 
@@ -1092,34 +957,6 @@ var setYearsBtn2 = ui.Button({
     // showAndOnMap(); // This will compute AND and display on map immediately
   }
 });
-
-
-
-
-// controlPanel.add(ui.Label('Step 2: Temporal Inputs', {fontWeight: 'bold', fontSize: '16px'}));
-// controlPanel.add(ui.Label({
-//   value: 'We have provided added functionality to isolate reference sites based on two temporal layers – fire incidence and change detection – but you can skip this if you are using the tool for the first time. For advanced users, for case-1 when you have a reference site and want to find other candidate sites that can be similarly restored, set the restoration start year as when you initiated restoration at your site and the base year as 1985. For case-2 when you have a candidate site and want to find similar reference sites, set the restoration start year as something recent like 2024 and the base year as when restoration started at the reference site or 1985 in case the reference sites you seek are pristine and have gone unchanged. ',
-//   style: {'fontSize': '14px'}
-// }));
-// controlPanel.add(yearPanel);
-// controlPanel.add(ui.Label({
-//   value: 'Current year is relevant especially for case-1 when you are trying to identify potential restoration sites, it allows you to do finer selection of potential locations. Specify current year as a recent year like 2024 when you want to identify potential sites that today look like what the reference site looked like when restoration was initiated there.',
-//   style: {'fontSize': '14px'}
-// }));
-// controlPanel.add(ui.Label({
-//   value: 'Even for case-2 where you want to find reference sites, it can help with finer filtering based on the current year. ',
-//   style: {'fontSize': '14px'}
-// }));
-// controlPanel.add(mask_yearPanel);
-
-
-// controlPanel.add(ui.Label({
-//   value: 'Specify the time range to use for building the rules and to evaluate them in the left panel map. For the first input, assuming the area got degraded after 1985, specify the pre-degradation year as when the area was doing well. If the area was degraded even before 1985 then too specify 1985 as the pre-degradation year since this will help identify other similar areas that were degraded during this entire stretch. For the second input, give the year in which restoration started at this reference site. Specify pre-degradation year as the same pre-degradation year specified for rule development – flexibility to specify a different year is provided for easy adjustment for cases where different areas in the ecoregion would have seen degradation happening at different times. Specify current year as the year now when you want to identify potential sites that look like what the reference site looked like when restoration was initiated there.',
-//   style: {'fontSize': '14px'}
-// }));
-
-// controlPanel.add(ui.Panel([setYearsBtn], ui.Panel.Layout.flow('horizontal')));
-
 
 
 // ================= STEP 2 =================
@@ -1152,291 +989,7 @@ controlPanel.add(ui.Panel([setYearsBtn1], ui.Panel.Layout.flow('horizontal')));
 // ================= STEP 4 =================
 controlPanel.add(ui.Label('Step 4: Apply Time-based Layers', {fontWeight: 'bold', fontSize: '16px'}));
 controlPanel.add(fire.getPanel());
-
-
-// ================= toggle view ============
-// var mainLayout = ui.root.widgets().get(0);   // existing split layout
-// var mainMap = mainLayout.widgets().get(0);   // original map
-
-// var leftMap = ui.Map();
-// var rightMap = ui.Map();
-
-// leftMap.setCenter(78.06, 23.04, 5);
-// rightMap.setCenter(78.06, 23.04, 5);
-
-// var mapLinker = ui.Map.Linker([leftMap, rightMap]);
-
-// controlPanel.add(ui.Label('Quick LULC Comparison Viewer', {
-//   fontWeight: 'bold',
-//   fontSize: '16px'
-// }));
-
-// var compareYear1 = ui.Textbox({
-//   placeholder: 'Year 1',
-//   value: '2000',
-//   style:{width:'80px'}
-// });
-
-// var compareYear2 = ui.Textbox({
-//   placeholder: 'Year 2',
-//   value: '2024',
-//   style:{width:'80px'}
-// });
-
-// var yearRow = ui.Panel([
-//   ui.Label('Year 1:'), compareYear1,
-//   ui.Label('Year 2:'), compareYear2
-// ], ui.Panel.Layout.flow('horizontal'));
-
-// controlPanel.add(yearRow);
-
-// function addGLCLegend(map) {
-
-//   var legend = ui.Panel({
-//     style: {
-//       position: 'bottom-left',
-//       padding: '8px 12px',
-//       backgroundColor: 'white'
-//     }
-//   });
-
-//   legend.add(ui.Label({
-//     value: 'GLC Land Cover',
-//     style: {fontWeight: 'bold', fontSize: '14px', margin: '0 0 6px 0'}
-//   }));
-
-//   var classes = [
-//     {name:'Croplands', color:'#FFFF00'},
-//     {name:'Forests', color:'#006400'},
-//     {name:'Shrubs / Scrubs', color:'#228B22'},
-//     {name:'Grasslands', color:'#7CFC00'},
-//     {name:'Wetlands', color:'#00FFFF'},
-//     {name:'Mangroves', color:'#00A86B'},
-//     {name:'Built-up', color:'#FF4500'},
-//     {name:'Barren', color:'#A9A9A9'},
-//     {name:'Water', color:'#0000FF'}
-//   ];
-
-//   classes.forEach(function(c){
-
-//     var row = ui.Panel({
-//       layout: ui.Panel.Layout.Flow('horizontal'),
-//       widgets: [
-
-//         ui.Label({
-//           style:{
-//             backgroundColor:c.color,
-//             padding:'8px',
-//             margin:'0 6px 4px 0'
-//           }
-//         }),
-
-//         ui.Label({
-//           value:c.name,
-//           style:{margin:'0 0 4px 0'}
-//         })
-
-//       ]
-//     });
-
-//     legend.add(row);
-//   });
-
-//   map.add(legend);
-// }
-
-// var lulc_mapping = {
-//   "croplands":[10,11,12,20],
-//   "forests":[51,52,61,62,71,72,81,82,91,92,101,102,111,112],
-//   "shrubs_scrubs":[120,121,122,130,140],
-//   "grasslands":[150,160,170],
-//   "wetlands":[180,190,200,210,220,230],
-//   "mangroves":[240],
-//   "builtup":[250],
-//   "barren":[260,261,262],
-//   "water":[270,280]
-// };
-
-// function remapGLC(img){
-
-//   var classValues = [];
-//   var classIds = [];
-
-//   var i = 1;
-
-//   Object.keys(lulc_mapping).forEach(function(key){
-
-//     lulc_mapping[key].forEach(function(v){
-//       classValues.push(v);
-//       classIds.push(i);
-//     });
-
-//     i++;
-
-//   });
-
-//   return img.remap(classValues, classIds).rename('lulc');
-// }
-
-// function showSplitLULC() {
-
-//   if (!roi_boundary) {
-//     print('Set region first');
-//     return;
-//   }
-
-//   var y1 = parseInt(compareYear1.getValue());
-//   var y2 = parseInt(compareYear2.getValue());
-
-//   if (isNaN(y1) || isNaN(y2)) {
-//     print('Enter valid years');
-//     return;
-//   }
-
-//   leftMap.layers().reset();
-//   rightMap.layers().reset();
-
-
-//   // ================= GLC DATASETS =================
-//   var five_year_dataset = ee.ImageCollection(
-//     'projects/sat-io/open-datasets/GLC-FCS30D/five-years-map'
-//   );
-
-//   var annual_dataset = ee.ImageCollection(
-//     'projects/sat-io/open-datasets/GLC-FCS30D/annual'
-//   );
-
-//   var five_year = five_year_dataset.mosaic().toInt();
-//   var annual = annual_dataset.mosaic().toInt();
-
-
-//   // ================= YEAR → IMAGE FUNCTION =================
-//   function getGLCImage(year){
-
-//     if (year > 2022) year = 2022;
-
-//     if (year === 1985) return five_year.select('b1').rename('lulc');
-//     if (year === 1990) return five_year.select('b2').rename('lulc');
-//     if (year === 1995) return five_year.select('b3').rename('lulc');
-
-//     if (year >= 2000 && year <= 2022){
-//       var band = 'b' + (year - 1999);
-//       return annual.select(band).rename('lulc');
-//     }
-
-//     print('Year not available: ', year);
-//     return null;
-//   }
-
-
-//   // ================= LOAD IMAGES =================
-//   var lulc1 = getGLCImage(y1);
-//   var lulc2 = getGLCImage(y2);
-
-//   if (!lulc1 || !lulc2){
-//     print('LULC images not available');
-//     return;
-//   }
-  
-//   // REMAP TO MAIN CLASSES
-//   lulc1 = remapGLC(lulc1).clip(roi_boundary);
-//   lulc2 = remapGLC(lulc2).clip(roi_boundary);
-
-//   // ================= VISUALIZATION =================
-//   var vis = {
-//     min:1,
-//     max:9,
-//     palette:[
-//       '#FFFF00', // croplands
-//       '#006400', // forests
-//       '#228B22', // shrubs
-//       '#7CFC00', // grass
-//       '#00FFFF', // wetlands
-//       '#00A86B', // mangroves
-//       '#FF4500', // builtup
-//       '#A9A9A9', // barren
-//       '#0000FF'  // water
-//     ]
-//   };
-
-
-//   // ================= ADD LAYERS =================
-//   leftMap.addLayer(lulc1, vis, 'GLC LULC ' + y1);
-//   rightMap.addLayer(lulc2, vis, 'GLC LULC ' + y2);
-  
-//   // ================= ROI BOUNDARY =================
-//   var roiOutline = ee.Image().byte().paint({
-//     featureCollection: roi_boundary,
-//     color: 1,
-//     width: 2
-//   });
-//   var roiVis = {palette:['black']};
-//   leftMap.addLayer(roiOutline, roiVis, 'ROI Boundary');
-//   rightMap.addLayer(roiOutline, roiVis, 'ROI Boundary');
-  
-//   // ================= ROI CENTER =================
-//   var center = roi_boundary.centroid();
-//   var centerFC = ee.FeatureCollection([
-//     ee.Feature(center)
-//   ]);
-//   var centerVis = {
-//     color: 'red',
-//     pointSize: 6
-//   };
-//   leftMap.addLayer(centerFC, centerVis, 'ROI Center');
-//   rightMap.addLayer(centerFC, centerVis, 'ROI Center');
-
-//   leftMap.centerObject(roi_boundary, 8);
-//   rightMap.centerObject(roi_boundary, 8);
-// }
-
-// store previous map
-// var previousMap = null;
-
-// var splitViewBtn = ui.Button({
-//   label:'Open Split LULC View',
-//   style:{stretch:'horizontal'},
-//   onClick:function(){
-
-//     showSplitLULC();
-
-//     var split = ui.SplitPanel({
-//       firstPanel:leftMap,
-//       secondPanel:rightMap,
-//       orientation:'horizontal',
-//       wipe:false,
-//       style:{stretch:'both'}
-//     });
-
-//     // remove original map first
-//     mainLayout.widgets().remove(mainMap);
-
-//     // insert split panel
-//     mainLayout.widgets().insert(0, split);
-//   }
-// });
-
-
-// var exitSplitBtn = ui.Button({
-//   label:'Return to Normal Map',
-//   style:{stretch:'horizontal'},
-//   onClick:function(){
-
-//     var current = mainLayout.widgets().get(0);
-
-//     // remove split panel
-//     mainLayout.widgets().remove(current);
-
-//     // restore original map
-//     mainLayout.widgets().insert(0, mainMap);
-//   }
-// });
-
-// controlPanel.add(splitViewBtn);
-// controlPanel.add(exitSplitBtn);
-
-// ======= continue ======
-
+controlPanel.add(spatial.getPanel());
 controlPanel.add(changeDetection.getPanel());
 
 
@@ -1479,7 +1032,6 @@ var computeAndBtn = ui.Button({
 var goToLocationBtn = createGoToLocationButton(map, 'Go to my location');
 
 controlPanel.add(ui.Label('Step 7: Compute AND of all loaded layers', {fontWeight: 'bold', fontSize: '16px'}));
-// controlPanel.add(ui.Panel([computeAndBtn], ui.Panel.Layout.flow('horizontal')));
 controlPanel.add(ui.Panel([computeAndBtn, goToLocationBtn], ui.Panel.Layout.flow('horizontal')));
 
 // ================= STEP 7: Filters =================
@@ -1545,9 +1097,9 @@ function getAllRulesJSON_Object() {
     json.terrain = terrain.getRule();
   }
 
-  // if (wasteland && wasteland.getRule) {
-  //   json.wasteland = wasteland.getRule();
-  // }
+  if (spatial && spatial.getRule) {
+    json.spatial = spatial.getRule();
+  }
 
   if (ldd && ldd.getRule) {
     json.land_degradation = ldd.getRule();
@@ -1584,7 +1136,7 @@ function applyRulesFromJSON(jsonText) {
   try {
     rules = JSON.parse(jsonText);
   } catch (e) {
-    print('❌ Invalid JSON');
+    print('Invalid JSON');
     return;
   }
 
@@ -1619,8 +1171,10 @@ function applyRulesFromJSON(jsonText) {
 
     fire.setYears(trainYears.preDeg, trainYears.restoration, 'validation');
     fire.setYears(inferYears.preDeg, inferYears.current, 'test');
+    
+    spatial.setYears(inferYears.preDeg, inferYears.current, 'test');
 
-    print('✅ Years loaded from JSON');
+    print('Years loaded from JSON');
   }
 
 
@@ -1654,11 +1208,6 @@ function applyRulesFromJSON(jsonText) {
       soil.setPhValues(rules.soil['Soil pH']);
     }
   }
-
-
-  // if (rules.terrain && terrain.setValues) {
-  //   terrain.setValues(rules.terrain);
-  // }
   
   if (rules.terrain && terrain.setValues) {
     var terrainValueMap = {
@@ -1683,10 +1232,6 @@ function applyRulesFromJSON(jsonText) {
   }
 
 
-  // if (rules.wasteland && wasteland.setValues) {
-  //   wasteland.setValues(rules.wasteland);
-  // }
-
   if (rules.land_degradation && ldd.setValues) {
     ldd.setValues(rules.land_degradation);
   }
@@ -1694,10 +1239,10 @@ function applyRulesFromJSON(jsonText) {
   if (rules.fire && fire.setFireValue) {
     fire.setFireValue(rules.fire);
   }
-
-  // if (rules.lulc && lulcAnalysis.setValues) {
-  //   lulcAnalysis.setValues(rules.lulc);
-  // }
+  
+  if (rules.spatial && fire.setValues) {
+    fire.setValues(rules.spatial);
+  }
   
   if (rules.lulc && lulcAnalysis.setValues) {
 
@@ -1719,11 +1264,9 @@ function applyRulesFromJSON(jsonText) {
     var lulcValues = rules.lulc
       .map(function(name) { return lulcValueMap[name]; })
       .filter(function(v) { return v !== undefined; });
-  
-    // ✅ This will tick checkboxes correctly
     lulcAnalysis.setValues(lulcValues);
   
-    print('✅ LULC classes loaded from JSON:', rules.lulc);
+    print('LULC classes loaded from JSON:', rules.lulc);
   }
 
 
@@ -1742,7 +1285,7 @@ function applyRulesFromJSON(jsonText) {
   // ---- Recompute AND automatically ----
   showAndOnMap();
 
-  print('✅ Rules successfully re-initialized from JSON');
+  print('Rules successfully re-initialized from JSON');
 }
 
 
@@ -1750,7 +1293,7 @@ var exportVectorBtn = ui.Button({
   label: 'Export AND as Polygons (SHP)',
   onClick: function() {
     if (!currentAndImage || !roi_boundary) {
-      print('⚠️ Compute AND and set ROI first.');
+      print('Compute AND and set ROI first.');
       return;
     }
 
@@ -1764,23 +1307,16 @@ var exportVectorBtn = ui.Button({
 
     var polygons = exportImage.reduceToVectors({
       geometry: roi_boundary,
-      scale: 30,                         // MUST be 30 to match LULC resolution
+      scale: 30,                      
       geometryType: 'polygon',
       eightConnected: true,
       labelProperty: 'AND',
       maxPixels: 1e13,
-      bestEffort: false                  // Set to false to force accuracy
+      bestEffort: false                  
     });
 
     // Final spatial filter to remove any "ghost" pixels outside the boundary
     var finalPolygons = polygons.filterBounds(roi_boundary);
-
-    // Export.table.toDrive({
-    //   collection: finalPolygons,
-    //   description: 'Export_AND_polygon',
-    //   folder: 'GEE_Exports',
-    //   fileFormat: 'SHP'
-    // });
     
     var url = finalPolygons.getDownloadURL({
       format: 'kml'
@@ -1854,7 +1390,7 @@ var downloadRulesBtn = ui.Button({
   label: 'Print Final Rule JSON',
   onClick: function () {
 
-    // ⏳ Allow UI + rule state to settle (important for Step 6 rules)
+    // Allow UI + rule state to settle (important for Step 6 rules)
     ee.Number(1).evaluate(function () {
 
       var rulesObj = getAllRulesJSON_Object();
@@ -1867,7 +1403,7 @@ var downloadRulesBtn = ui.Button({
         use_case: projectUseCase
       };
 
-      // ✅ ADD YEARS (from reference code)
+      // ADD YEARS (from reference code)
       rulesObj.years = {
         train: {
           base: trainYears.preDeg,
@@ -1883,8 +1419,8 @@ var downloadRulesBtn = ui.Button({
       var formatted = convert_format(rulesObj);
       var rulesJSON = JSON.stringify(formatted, null, 2);
 
-      print('🔍 Final Rules Object:', rulesObj);
-      print('📄 Final Rules JSON (pretty):', rulesJSON);
+      print('Final Rules Object:', rulesObj);
+      print('Final Rules JSON (pretty):', rulesJSON);
 
       var jsonLabel = ui.Label({
         value: rulesJSON,
@@ -1897,44 +1433,10 @@ var downloadRulesBtn = ui.Button({
 
       controlPanel.add(jsonLabel);
 
-      print('✅ JSON export completed with years included');
+      print('JSON export completed with years included');
     });
   }
 });
-// controlPanel.add(downloadRulesBtn);
-
-
-// TEST --- IMAGES
-
-// var test = ee.Image.constant(1).visualize({
-//   palette: ['red']
-// });
-
-// controlPanel.add(ui.Thumbnail({
-//   image: test,
-//   params: {dimensions: 50}
-// }));
-
-
-// var img = ee.Image('projects/ee-ojasvibansal/assets/ldd1516');
-
-// var visImg = img.visualize({
-//   min: 0,
-//   max: 1,
-//   palette: ['black', 'orange']
-// });
-
-// var thumb = ui.Thumbnail({
-//   image: visImg,
-//   params: {
-//     dimensions: 200
-//   },
-//   style: {margin: '10px'}
-// });
-
-// controlPanel.add(ui.Label('LDD Preview'));
-// controlPanel.add(thumb);
-
 
 
 function capitalize(str) {
@@ -1948,7 +1450,6 @@ var rulesTablePanel = ui.Panel({
     stretch: 'horizontal',
     margin: '10px 0',
     padding: '8px',
-    // border: '1px solid gray',
     shown: false
   }
 });
@@ -2040,14 +1541,6 @@ function buildRulesTable() {
     } else if (key === 'elevation' && Array.isArray(value)) {
       valueStr = value[0] + ' - ' + value[1] + ' m';
     } else if (key === 'change_detection' && typeof value === 'object') {
-      // valueStr = "From: " + value.from.join(', ') + "\nTo: " + value.to.join(', ');
-      
-      // var fromYears = value.from_years ? value.from_years.join(', ') : '';
-      // var toYears = value.to_years ? value.to_years.join(', ') : '';
-      // valueStr =
-      //   "From (" + fromYears + "): " + value.from.join(', ') +
-      //   "\nTo (" + toYears + "): " + value.to.join(', ');
-      
       var selectedRegion = null;
       var selectedName = regionDropdown.getValue();
     
@@ -2062,9 +1555,6 @@ function buildRulesTable() {
     
       var fromYear = (yrs.length >= 1) ? yrs[0] : '';
       var toYear   = (yrs.length >= 2) ? yrs[1] : '';
-    
-      // var fromVals = value[0] || [];
-      // var toVals   = value[1] || [];
       var fromVals = [];
       var toVals = [];
     
@@ -2111,7 +1601,6 @@ function buildRulesTable() {
     table.add(row);
   }
 
-  // Add table first (important for async update)
   rulesTablePanel.add(table);
 
   // ================= AREA ROW (ASYNC) =================
@@ -2168,7 +1657,6 @@ var showRulesBtn = ui.Button({
   }
 });
 
-// controlPanel.add(showRulesBtn);
 
 var actionButtonsPanel = ui.Panel({
   widgets: [downloadRulesBtn, showRulesBtn],
