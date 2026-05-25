@@ -13,7 +13,7 @@ var themeNames = [
     'Built-Up',
     'Cultivated Trees',
     'Dune',
-    'Forest',
+    'Trees',
     'Saline Flat',
     'Savanna Grassland',
     'Savanna Shrubland',
@@ -22,26 +22,19 @@ var themeNames = [
   ];
 
 var themeIndices = [1,2,3,4,5,6,7,8,9,10,11];
-  
 
-
-// Allow main script to inject map and ROI
 exports.setROI = function(roi, map) {
   roi_boundary = roi;
   mapInstance = map;
 };
 
-// Optional: allow raising the restoration marker above this layer
 exports.setKeepMarkerOnTop = function(fn) {
   keepRestorationMarkerOnTopFn = fn;
 };
 
-// To retrieve the loaded image later (for Step 8)
 exports.getOneMap = function() {
   return loadedImage;
 };
-
-// ==================== PANEL UI ====================
 
 exports.getPanel = function() {
   var panel = ui.Panel();
@@ -56,7 +49,6 @@ exports.getPanel = function() {
     style: {'fontSize':'14px'}
   }));
 
-  // var checkboxes = {};
   var listPanel = ui.Panel();
   themeNames.forEach(function(name){
     var cb = ui.Checkbox(name, false);
@@ -83,11 +75,10 @@ exports.getPanel = function() {
     clear();
 
     if (!mapInstance) {
-      print('⚠️ Please select an ecoregion first — map not initialized.');
+      print('Please select an ecoregion first — map not initialized.');
       return;
     }
 
-    // Load the thematic image
     thematicImg = ee.Image(
       'projects/ee-open-natural-ecosystems/assets/publish/onesWith7Classes/landcover_hier'
 ).select('l2LabelNum');
@@ -126,9 +117,6 @@ exports.getPanel = function() {
 };
 
 
-
-
-// ----------------- Get ONE rule (for JSON download) -----------------
 exports.getRule = function() {
   if (!roi_boundary) return null;
 
@@ -142,22 +130,19 @@ exports.getRule = function() {
 
   if (selectedNames.length === 0) return null;
 
-  return selectedNames; // array of class labels
+  return selectedNames; 
 };
 
 
-// ----------------- Set ONE rule (from JSON upload) -----------------
 exports.setValues = function(ruleArray) {
   if (!ruleArray || !Array.isArray(ruleArray)) return;
 
-  // Clear all checkboxes first
   themeNames.forEach(function(name) {
     if (checkboxes[name]) {
       checkboxes[name].setValue(false);
     }
   });
 
-  // Tick checkboxes that match rule names
   ruleArray.forEach(function(ruleName) {
     if (checkboxes[ruleName]) {
       checkboxes[ruleName].setValue(true);
