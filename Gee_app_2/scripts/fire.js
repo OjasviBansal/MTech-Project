@@ -146,9 +146,7 @@ exports.getPanel = function(mode) {
 };
 
 // ==================== Loaded image getter ====================
-// ==================== Loaded image getter ====================
 exports.getLoadedImage = function(mode) {
-  // If mode is not specified, default to last loaded image
   if (mode !== 'validation' && mode !== 'test') {
     return loadedImage;  // return whatever was last loaded
   }
@@ -184,16 +182,13 @@ exports.setFireValue = function(value) {
 
 // ==================== Clear map ====================
 exports.clearMap = function() {
-  // Remove fire occurrence layers
   activeMaps.forEach(function(m) {
-    // Remove any layers whose name starts with 'Fire Occurrences'
     m.layers().forEach(function(layer) {
       if (layer.getName() && layer.getName().indexOf('Fire Occurrences') === 0) {
         m.remove(layer);
       }
     });
 
-    // Remove legends related to Fire Occurrences
     var widgets = m.widgets();
     var toRemove = [];
     widgets.forEach(function(w) {
@@ -207,10 +202,7 @@ exports.clearMap = function() {
     toRemove.forEach(function(w) { widgets.remove(w); });
   });
 
-  // Reset loaded image
   loadedImage = null;
-
-  // Reset alert label
   alertLabel.setValue('');
 
   print('Fire occurrences layers and legends cleared from all maps.');
