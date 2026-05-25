@@ -38,24 +38,17 @@ exports.setKeepMarkerOnTop = function(fn) {
 };
 
 
-// exports.setYears = function(startYear, endYear) {
-//   if (typeof startYear !== 'number' || typeof endYear !== 'number') throw new Error('Years must be numbers');
-//   selectedYear = endYear;  // or however you handle test years
-// };
-
 exports.setYears = function(startYear, endYear) {
   if (typeof endYear !== 'number') {
-    print('⚠️ Invalid LULC year');
+    print('Invalid LULC year');
     return;
   }
 
   selectedYear = endYear;
-  print('✅ LULC selectedYear set to:', selectedYear);
+  print('LULC selectedYear set to:', selectedYear);
 };
 
 
-
-// exports.getLoadedImage = function() { return loadedImage; };
 // ----------------- Updated getLoadedImage -----------------
 exports.getLoadedImage = function() {
   if (!roi_boundary || !selectedYear) return null;
@@ -113,9 +106,9 @@ exports.getPanel = function() {
     checkboxPanel.add(cb);
   });
   
-  // 🔁 Apply cached JSON values (if any)
+  // Apply cached JSON values (if any)
   if (pendingLulcValues) {
-    print("⏪ Applying cached LULC values:", pendingLulcValues);
+    print("Applying cached LULC values:", pendingLulcValues);
     exports.setValues(pendingLulcValues);
     pendingLulcValues = null;
   }
@@ -126,77 +119,6 @@ exports.getPanel = function() {
   buttonPanel.add(loadButton);
   buttonPanel.add(clearButton);
   panel.add(buttonPanel);
-
-  // var clearMap = function() {
-  //   activeMaps.forEach(function(m) {
-  //     m.layers().forEach(function(layer) {
-  //       if (layer.getName() && layer.getName().indexOf('LULC') === 0) m.remove(layer);
-  //     });
-  //     lulcUtils.legends.forEach(function(legend) { m.widgets().remove(legend); });
-  //   });
-  //   lulcUtils.layers = [];
-  //   lulcUtils.legends = [];
-  //   loadedImage = null;
-  // };
-
-  // var loadSelectedLULC = function() {
-  //   if (!roi_boundary || !selectedYear) { ui.alert('Error', 'Please set ROI and year first.'); return; }
-  //   clearMap();
-
-  //   var img = ee.Image(
-  //     "projects/corestack-datasets/assets/datasets/LULC_v3_river_basin/pan_india_lulc_v3_" 
-  //     + selectedYear + "_" + (parseInt(selectedYear)+1)
-  //   ).select('predicted_label');
-
-  //   img = img.clip(roi_boundary);
-    
-  //   // loadedImage = img;
-    
-  //   if (selectedValues.length === 0) {
-  //     ui.alert('Please select at least one LULC class.');
-  //     loadedImage = null;
-  //     return;
-  //   }
-    
-  //   loadedImage = img.remap(
-  //     selectedValues,
-  //     ee.List.repeat(1, selectedValues.length),
-  //     0
-  //   ).selfMask();
-
-
-  //   // collect selected values
-  //   var selectedValues = [];
-  //   checkboxes.forEach(function(cb, index) {
-  //     if (cb.getValue()) selectedValues.push(lulcClasses[index].value);
-  //   });
-
-  //   var mask = img.remap(selectedValues, ee.List.repeat(1, selectedValues.length), 0).selfMask();
-  //   var vizParams = {palette:['white','green'], min:0, max:1};
-
-  //   activeMaps.forEach(function(m) {
-  //     m.addLayer(mask, vizParams, 'LULC');
-
-  //     // ---- LEGEND ----
-  //     var legend = ui.Panel({style:{position:'bottom-left', padding:'8px', backgroundColor:'rgba(255,255,255,0.8)'}});
-  //     legend.add(ui.Label({value:'LULC', style:{fontWeight:'bold', margin:'0 0 4px 0'}}));
-
-  //     var makeRow = function(color, name) {
-  //       var colorBox = ui.Label({style:{backgroundColor: color, padding:'8px', margin:'0 4px 0 0'}});
-  //       var description = ui.Label({value: name, style:{margin:'0'}});
-  //       return ui.Panel({widgets:[colorBox, description], layout: ui.Panel.Layout.flow('horizontal')});
-  //     };
-
-  //     legend.add(makeRow('green','Selected LULC'));
-  //     // m.add(legend);
-  //     lulcUtils.legends.push(legend);
-  //   });
-    
-  //   if (keepRestorationMarkerOnTopFn) {
-  //     ui.util.setTimeout(keepRestorationMarkerOnTopFn, 100);
-  //   }
-
-  // };
   
   var loadSelectedLULC = function() {
 
@@ -214,7 +136,7 @@ exports.getPanel = function() {
   
     img = img.clip(roi_boundary);
   
-    // ✅ FIRST collect selected values
+    // FIRST collect selected values
     var selectedValues = [];
     var selectedNames = [];
     checkboxes.forEach(function(cb, index) {
@@ -224,7 +146,7 @@ exports.getPanel = function() {
       }
     });
     
-    print("🟢 Selected LULC classes:", selectedNames, selectedValues);
+    print(" Selected LULC classes:", selectedNames, selectedValues);
 
   
     if (selectedValues.length === 0) {
@@ -233,7 +155,7 @@ exports.getPanel = function() {
       return;
     }
   
-    // ✅ Create mask
+    // Create mask
     loadedImage = img.remap(
       selectedValues,
       ee.List.repeat(1, selectedValues.length),
@@ -266,85 +188,13 @@ exports.tickCheckboxByName = function(name) {
   });
 };
 
-// Programmatically set multiple LULC classes by values
-// exports.setValues = function(values) {
-//   checkboxes.forEach(function(cb) { cb.setValue(false); });
-
-//   lulcClasses.forEach(function(cls, index) {
-//     // subtract 1 from 1-based input
-//     if (values.indexOf(cls.value + 1) !== -1) checkboxes[index].setValue(true);
-//   });
-
-//   print("✅ LULC checkboxes updated for 1-based input values:", values);
-// };
-
-// exports.setValues = function(values) {
-
-//   if (!Array.isArray(values)) return;
-
-//   if (!checkboxes || checkboxes.length === 0) {
-//     print("⚠️ LULC panel not initialized yet");
-//     return;
-//   }
-
-//   // Clear all first
-//   checkboxes.forEach(function(cb) {
-//     cb.setValue(false);
-//   });
-
-//   // values = array of CLASS NAMES
-//   lulcClasses.forEach(function(cls, index) {
-//     if (values.indexOf(cls.name) !== -1) {
-//       checkboxes[index].setValue(true);
-//     }
-//   });
-
-//   print("✅ LULC checkboxes set from JSON names:", values);
-// };
-
-// exports.setValues = function(values) {
-
-//   if (!Array.isArray(values)) return;
-
-//   if (!checkboxes || checkboxes.length === 0) {
-//     print("⚠️ LULC panel not initialized yet");
-//     return;
-//   }
-
-//   // Clear all first
-//   checkboxes.forEach(function(cb) {
-//     cb.setValue(false);
-//   });
-
-//   // Tick based on class NAMES
-//   lulcClasses.forEach(function(cls, index) {
-//     if (values.indexOf(cls.name) !== -1) {
-//       checkboxes[index].setValue(true);
-//     }
-//   });
-
-//   print("✅ LULC checkboxes set from JSON names:", values);
-
-//   // 🔥 NEW: Automatically render layer (like Load button)
-//   var img = exports.getLoadedImage();
-
-//   if (img) {
-//     activeMaps.forEach(function(m) {
-//       m.addLayer(img, {palette:['white','green'], min:0, max:1}, 'LULC');
-//     });
-
-//     if (keepRestorationMarkerOnTopFn) {
-//       ui.util.setTimeout(keepRestorationMarkerOnTopFn, 100);
-//     }
-//   }
-// };
 
 
 exports.setValues = function(values) {
 
   if (!Array.isArray(values)) return;
 
-  // ⏳ UI not ready → cache
+  // UI not ready → cache
   if (checkboxes.length === 0) {
     pendingLulcValues = values;
     return;
@@ -355,22 +205,20 @@ exports.setValues = function(values) {
     cb.setValue(false);
   });
 
-  // ✅ SUPPORT BOTH:
+  // SUPPORT BOTH:
   // - numeric values (region presets)
   // - string names (JSON rules)
   lulcClasses.forEach(function(cls, index) {
     if (
-      values.indexOf(cls.value) !== -1 ||   // numeric case ✅
-      values.indexOf(cls.name) !== -1       // name case ✅
+      values.indexOf(cls.value) !== -1 ||   // numeric case 
+      values.indexOf(cls.name) !== -1       // name case 
     ) {
       checkboxes[index].setValue(true);
     }
   });
 
-  print('✅ LULC checkboxes set from:', values);
+  print('LULC checkboxes set from:', values);
 };
-
-
 
 
 // ------------------- Remove legend function -------------------
