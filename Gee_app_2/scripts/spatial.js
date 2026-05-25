@@ -219,12 +219,19 @@ function removeLegend() {
 }
 
 function clearMapOnly() {
+
   activeMaps.forEach(function(m) {
-    m.layers().forEach(function(layer) {
-      if (layer.getName() && layer.getName().indexOf('Spatial Assets Layer') === 0) {
-        m.remove(layer);
+
+    var layers = m.layers();
+
+    for (var i = layers.length() - 1; i >= 0; i--) {
+
+      var layer = layers.get(i);
+
+      if (layer.getName() === 'Spatial') {
+        layers.remove(layer);
       }
-    });
+    }
   });
 }
 
