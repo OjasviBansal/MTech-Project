@@ -2,7 +2,7 @@ var roi_boundary = null;
 var loadedImage = null;
 
 var activeMaps = [Map];
-var checkboxes = []; // global checkboxes
+var checkboxes = []; 
 var keepRestorationMarkerOnTopFn = null;
 exports.setROI = function(roi, mapInstance) {
   roi_boundary = roi;
@@ -19,7 +19,6 @@ exports.getLoadedImage = function() {
   return loadedImage;
 };
 
-// ================== LDD CLASSES ==================
 var lddClasses = [
   {name: 'Others - Riverine Sands / Sea Ingress etc', value: 1},
   {name: 'Water Erosion - Sheet erosion - Slight', value: 2},
@@ -59,7 +58,6 @@ var lddClasses = [
   {name: 'Non Degraded Land / None of the Above', value: 0}
 ];
 
-// ================== PANEL ==================
 exports.getPanel = function() {
   var panel = ui.Panel();
   
@@ -76,14 +74,12 @@ exports.getPanel = function() {
   var checkboxPanel = ui.Panel({style: {margin: '0 10px'}});
   panel.add(checkboxPanel);
 
-  // reset and fill global checkboxes
   checkboxes = [];
   lddClasses.forEach(function(item) {
     var cb = ui.Checkbox(item.name, false);
     checkboxes.push(cb);
     checkboxPanel.add(cb);
   });
-  // --- Add "Select All" button below all checkboxes ---
   var selectAllButton = ui.Button({
     label: 'Select All',
     style: {
@@ -111,7 +107,6 @@ exports.getPanel = function() {
   buttonPanel.add(clearButton);
   panel.add(buttonPanel);
 
-  // --- Clear ---
   var clearMap = function() {
     activeMaps.forEach(function(m) {
       m.layers().forEach(function(layer) {
@@ -124,7 +119,6 @@ exports.getPanel = function() {
     loadedImage = null;
   };
 
-  // --- Load ---
   var loadSelectedLDD = function() {
     if (!roi_boundary) {
       ui.alert('Error', 'Please set ROI from the main panel first.');
@@ -158,7 +152,6 @@ exports.getPanel = function() {
 
     activeMaps.forEach(function(m) {
       m.addLayer(displayImage, vizParams, 'Land Degradation');
-      // m.centerObject(roi_boundary, 6);
 
       var colorBox = ui.Label({
         style: {
@@ -185,10 +178,8 @@ exports.getPanel = function() {
   return panel;
 };
 
-// ------ ldd at specific point -----------
 exports.getLddAtPoint = function(point) {
 
-  // Directly use the dataset instead of loadedImage
   var ldd_image = ee.Image("projects/ee-apoorvadewan13/assets/ldd1516");
   return ldd_image.reduceRegion({
     reducer: ee.Reducer.first(),
@@ -211,7 +202,6 @@ exports.tickCheckboxForValue = function(value) {
   var idx = lddClasses.indexOf(match);
   if (checkboxes[idx]) {
     checkboxes[idx].setValue(true);
-    // print("✅ LDD checkbox ticked for:", match.name, "(value:", value, ")");
   }
 };
 
@@ -223,7 +213,6 @@ exports.setKeepMarkerOnTop = function(fn) {
 exports.getRule = function() {
   if (!roi_boundary) return null;
 
-  // Collect selected class names
   var selectedNames = [];
   checkboxes.forEach(function(cb, idx) {
     if (cb.getValue()) selectedNames.push(lddClasses[idx].name);
@@ -231,7 +220,7 @@ exports.getRule = function() {
 
   if (selectedNames.length === 0) return null;
 
-  return selectedNames;  // just the selected class labels
+  return selectedNames; 
 };
 
 
@@ -239,12 +228,10 @@ exports.getRule = function() {
 exports.setValues = function(ruleArray) {
   if (!ruleArray || !Array.isArray(ruleArray)) return;
 
-  // Clear first
   checkboxes.forEach(function(cb) {
     cb.setValue(false);
   });
 
-  // Tick matching class names
   for (var i = 0; i < ruleArray.length; i++) {
     var ruleName = ruleArray[i];
 
@@ -260,14 +247,12 @@ exports.setValues = function(ruleArray) {
 };
 
 
-// ----------------- Apply from JSON (AUTO LOAD) -----------------
 exports.applyFromJSON = function() {
   if (!roi_boundary) {
-    print('⚠️ LDD: ROI not set');
+    print('LDD: ROI not set');
     return;
   }
 
-  // Collect selected values from checkboxes
   var selectedValues = [];
   checkboxes.forEach(function(cb, index) {
     if (cb.getValue()) {
@@ -276,11 +261,10 @@ exports.applyFromJSON = function() {
   });
 
   if (selectedValues.length === 0) {
-    print('⚠️ LDD: No degradation classes selected');
+    print('LDD: No degradation classes selected');
     return;
   }
 
-  // ---------- Clear old LDD layers ----------
   activeMaps.forEach(function(m) {
     m.layers().forEach(function(layer) {
       if (layer.getName() &&
@@ -293,7 +277,6 @@ exports.applyFromJSON = function() {
   lddUtils.layers = [];
   loadedImage = null;
 
-  // ---------- Build mask ----------
   var ldd_image = ee.Image(
     'projects/ee-apoorvadewan13/assets/ldd1516'
   ).clip(roi_boundary).unmask(0);
