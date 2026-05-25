@@ -1,15 +1,11 @@
-// sizebased.js - Size-based filtering module
 exports.apply = function(combinedCondition, roi_boundary, mapPanel, area_threshold_km2) {
-  // Default area threshold (km^2)
+
   area_threshold_km2 = area_threshold_km2 || 0.0005;
 
-  // Ensure geometry is a Geometry object
   var roi_geometry = ee.Feature(roi_boundary).geometry();
 
-  // Ensure input is an ee.Image
   var inputImg = ee.Image(combinedCondition);
 
-  // Vectorize mask -> polygons
   var polygon_vector = inputImg.selfMask().reduceToVectors({
     geometry: roi_geometry,
     scale: 30,
@@ -19,18 +15,11 @@ exports.apply = function(combinedCondition, roi_boundary, mapPanel, area_thresho
     bestEffort: true
   });
 
-  // Compute area in km^2 and filter
   var area_vector = polygon_vector.map(function(feature) {
     return feature.set('area', feature.geometry().area(1).divide(1000 * 1000));
   });
 
   var filtered_vector = area_vector.filter(ee.Filter.gte('area', area_threshold_km2));
-
-  // Convert back to raster
-  // var filtered_raster = filtered_vector.reduceToImage({
-  //   properties: ['label'],
-  //   reducer: ee.Reducer.first()
-  // }).selfMask();
   
   mapPanel.layers().forEach(function(layer, i) {
     if (layer && layer.getName && layer.getName() === 'Size Filtered Polygons') {
@@ -41,7 +30,6 @@ exports.apply = function(combinedCondition, roi_boundary, mapPanel, area_thresho
   var outline = ee.Image().byte().paint(filtered_vector, 1, 2);
   var display = fill.add(outline);
 
-  // Add layer to the provided mapPanel
   mapPanel.addLayer(display, {palette: ['yellow']}, 'Size Filtered Polygons');
 
   return filtered_vector;
