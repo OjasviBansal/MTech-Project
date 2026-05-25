@@ -1,18 +1,13 @@
-// ==================== Bioclim Annual Mean Temperature ====================
-
 var roi_boundary = null;
 var loadedImage = null;
 var currentMap = null;
 var activeMaps = [null];
 var keepRestorationMarkerOnTopFn = null;
 
-// Track UI elements
 var minBox, maxBox;
 
-// 🌍 WorldClim dataset
 var dataset = ee.Image('WORLDCLIM/V1/BIO');
 
-// Allow ROI + map registration
 exports.setROI = function(roi, mapInstance) {
   roi_boundary = roi;
   if (mapInstance && activeMaps.indexOf(mapInstance) === -1) {
@@ -21,12 +16,10 @@ exports.setROI = function(roi, mapInstance) {
   }
 };
 
-// Namespace
 var tempUtils = {
   layer: null,
 };
 
-// ==================== UI PANEL ====================
 exports.getPanel = function() {
   var panel = ui.Panel();
 
@@ -52,7 +45,6 @@ exports.getPanel = function() {
 
   panel.add(controlPanel);
 
-  // 🌡 Textboxes (START EMPTY — no silent activation)
   minBox = ui.Textbox({
     placeholder: 'Min',
     value: '',
@@ -80,20 +72,6 @@ exports.getPanel = function() {
   controlPanel.add(loadButton);
   controlPanel.add(clearButton);
 
-  // ================= CLEAR =================
-  // var clearMap = function() {
-  //   if (!currentMap) return;
-
-  //   currentMap.layers().forEach(function(layer) {
-  //     if (layer.getName() &&
-  //         layer.getName().indexOf('Annual Mean Temperature') === 0) {
-  //       currentMap.remove(layer);
-  //     }
-  //   });
-
-  //   tempUtils.layer = null;
-  //   loadedImage = null;
-  // };
   var clearMap = function() {
     activeMaps.forEach(function(m) {
       if (!m) return;
@@ -110,10 +88,9 @@ exports.getPanel = function() {
     loadedImage = null;
   };
 
-  // ================= LOAD =================
   var loadTemp = function() {
     if (!roi_boundary || !currentMap) {
-      print('⚠️ ROI or target map not set.');
+      print('ROI or target map not set.');
       return;
     }
 
@@ -121,25 +98,20 @@ exports.getPanel = function() {
     var maxVal = parseFloat(maxBox.getValue());
 
     if (isNaN(minVal) || isNaN(maxVal) || minVal > maxVal) {
-      print('⚠️ Invalid temperature range');
+      print('Invalid temperature range');
       return;
     }
 
     clearMap();
 
     var bio01 = dataset.select('bio01')
-      .divide(10)   // Convert from °C × 10 to °C
+      .divide(10)  
       .clip(roi_boundary);
 
     var masked = bio01.gte(minVal)
       .and(bio01.lte(maxVal))
       .selfMask();
 
-    // currentMap.addLayer(
-    //   masked,
-    //   { palette: ['#ff00ff'] }, // 🌡 distinct temperature color
-    //   'Annual Mean Temperature (' + minVal + '–' + maxVal + ' °C)'
-    // );
     activeMaps.forEach(function(m) {
       if (!m) return;
     
@@ -162,8 +134,6 @@ exports.getPanel = function() {
 
   return panel;
 };
-
-// ==================== EXPORTED FUNCTIONS ====================
 
 exports.getLoadedImage = function() {
   return loadedImage;
@@ -200,10 +170,8 @@ exports.setRange = function(minVal, maxVal) {
     print('Error: Temp textboxes not initialized yet.');
   }
 };
-var keepMarkerOnTop = null; // private reference
+var keepMarkerOnTop = null;
 
-
-// Standard rule format (for AND logic)
 exports.getRule = function() {
   if (!roi_boundary) return null;
 
@@ -220,10 +188,9 @@ exports.getRule = function() {
   };
 };
 
-// JSON apply
 exports.applyFromJSON = function(minVal, maxVal) {
   if (!roi_boundary) {
-    print('⚠️ Temperature ROI not set');
+    print('Temperature ROI not set');
     return;
   }
 
@@ -240,12 +207,6 @@ exports.applyFromJSON = function(minVal, maxVal) {
     .and(bio01.lte(maxVal))
     .selfMask();
 
-  // currentMap.addLayer(
-  //   masked,
-  //   { palette: ['#ff00ff'] },
-  //   'Annual Mean Temperature (' + minVal + '–' + maxVal + ' °C)'
-  // );
-  // 🔥 Clear existing temperature layers
   activeMaps.forEach(function(m) {
     if (!m) return;
 
@@ -257,7 +218,6 @@ exports.applyFromJSON = function(minVal, maxVal) {
     });
   });
 
-  // 🔥 Add to all maps
   activeMaps.forEach(function(m) {
     if (!m) return;
 
@@ -271,7 +231,6 @@ exports.applyFromJSON = function(minVal, maxVal) {
   loadedImage = masked;
 };
 
-// Target-only setter (for inference map)
 exports.setValues2 = function(minVal, maxVal, targetMap) {
   if (!roi_boundary || !targetMap) return;
 
