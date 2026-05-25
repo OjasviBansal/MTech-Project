@@ -19,8 +19,6 @@ exports.setKeepMarkerOnTop = function(fn) {
 };
 
 // ==================== Elevation ====================
-
-// Namespace for layer and legend
 var elevationUtils = {
   layer: null,
   legends: []
@@ -75,27 +73,11 @@ exports.getPanel = function() {
   controlPanel.add(loadButton);
   controlPanel.add(clearButton);
 
-  // --- Clear function ---
-  // var clearMap = function() {
-  //   activeMaps.forEach(function(m) {
-  //     m.layers().forEach(function(layer) {
-  //       if (layer.getName() && layer.getName().indexOf('Elevation') === 0) {
-  //         m.remove(layer);
-  //       }
-  //     });
-  //   });
-  //   elevationUtils.legends.forEach(function(l) {
-  //     activeMaps.forEach(function(m) { m.remove(l); });
-  //   });
-  //   elevationUtils.legends = [];
-  //   elevationUtils.layer = null;
-  //   loadedImage = null;
-  // };
-
+  
   // --- Load function ---
   var loadElevation = function() {
     if (!roi_boundary) {
-      print('⚠️ Error: Please set ROI from the main panel first.');
+      print('Error: Please set ROI from the main panel first.');
       return;
     }
 
@@ -103,7 +85,7 @@ exports.getPanel = function() {
     var maxVal = parseFloat(maxBox.getValue());
 
     if (isNaN(minVal) || isNaN(maxVal) || minVal > maxVal) {
-      print('⚠️ Error: Please enter valid min/max values');
+      print('Error: Please enter valid min/max values');
       return;
     }
 
@@ -160,7 +142,6 @@ exports.getPanel = function() {
 };
 
 // ----------------- Exposed functions -----------------
-// ----------------- Updated getLoadedImage -----------------
 exports.getLoadedImage = function() {
   if (!roi_boundary) return null;
 
@@ -183,7 +164,7 @@ exports.setRange = function(minVal, maxVal) {
     minBox.setValue(minVal);
     maxBox.setValue(maxVal);
   } else {
-    print('⚠️ Error: Elevation textboxes not initialized yet.');
+    print('Error: Elevation textboxes not initialized yet.');
   }
 };
 
