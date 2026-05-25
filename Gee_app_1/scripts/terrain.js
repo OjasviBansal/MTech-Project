@@ -2,7 +2,6 @@ var roi_boundary = null;
 var loadedImage = null;
 var activeMaps = [Map];
 var keepRestorationMarkerOnTopFn = null;
-// Module-level array to hold checkbox references
 var checkboxes = [];
 
 exports.setROI = function(roi, mapInstance) {
@@ -20,7 +19,6 @@ exports.reloadAndGetImage = function() {
 
   var terrain = ee.Image("projects/corestack-datasets/assets/datasets/terrain/pan_india_terrain_raster_fabdem").clip(roi_boundary);
   
-  // Collect selected values again
   var selectedValues = [];
   checkboxes.forEach(function(cb, index) {
     if (cb.getValue()) selectedValues.push(terrainClasses[index].value);
@@ -48,7 +46,6 @@ var terrainClasses = [
   {name: 'Mountain tops, high ridges', value: 11}
 ];
 
-// ---------------- Auto-set classes at clicked point ----------------
 exports.setClassesAtPoint = function(point) {
   var terrain = ee.Image("projects/corestack-datasets/assets/datasets/terrain/pan_india_terrain_raster_fabdem");
 
@@ -64,14 +61,12 @@ exports.setClassesAtPoint = function(point) {
     var keys = Object.keys(result);
     if (keys.length === 0) return;
 
-    var val = result[keys[0]];  // the terrain value at the clicked point
+    var val = result[keys[0]]; 
 
-    // Tick the matching checkbox
     for (var i = 0; i < terrainClasses.length; i++) {
       checkboxes[i].setValue(terrainClasses[i].value === val);
     }
 
-    // Print selected class for info
     for (var j = 0; j < terrainClasses.length; j++) {
       if (terrainClasses[j].value === val) {
         print('Auto-selected terrain class: ' + terrainClasses[j].name + ' (value: ' + val + ')');
@@ -81,7 +76,6 @@ exports.setClassesAtPoint = function(point) {
   });
 };
 
-// ---------------- UI Panel ----------------
 exports.getPanel = function() {
   var panel = ui.Panel();
   panel.add(ui.Label('Terrain (CoRE stack)', {fontSize: '16px', fontWeight: 'bold', margin: '15px 0 5px 10px'}));
@@ -90,7 +84,6 @@ exports.getPanel = function() {
   var checkboxPanel = ui.Panel({style: {margin: '0 10px'}});
   panel.add(checkboxPanel);
 
-  // Create checkboxes and assign to module-level variable
   checkboxes = [];
   terrainClasses.forEach(function(item) {
     var cb = ui.Checkbox(item.name, false);
@@ -121,7 +114,6 @@ exports.getPanel = function() {
     var terrain = ee.Image("projects/corestack-datasets/assets/datasets/terrain/pan_india_terrain_raster_fabdem").clip(roi_boundary);
     loadedImage = mask;
 
-    // Collect selected values
     var selectedValues = [];
     checkboxes.forEach(function(cb, index) {
       if (cb.getValue()) selectedValues.push(terrainClasses[index].value);
@@ -132,8 +124,7 @@ exports.getPanel = function() {
     var mask = terrain.remap(selectedValues, ee.List.repeat(1, selectedValues.length), 0).selfMask();
 
     activeMaps.forEach(function(m) {
-      m.addLayer(mask, {min: 0, max: 1, palette: ['white','green']}, 'Terrain (Selected=Green)');
-      // m.centerObject(roi_boundary, 6);
+      m.addLayer(mask, {min: 0, max: 1, palette: ['white','green']}, 'Terrain');
 
       if (keepRestorationMarkerOnTopFn) {
       ui.util.setTimeout(keepRestorationMarkerOnTopFn, 100);
@@ -149,12 +140,9 @@ exports.setKeepMarkerOnTop = function(fn) {
   keepRestorationMarkerOnTopFn = fn;
 };
 
-
-
 exports.getRule = function() {
   if (!roi_boundary) return null;
 
-  // Collect selected terrain class names
   var selectedNames = [];
   checkboxes.forEach(function(cb, i) {
     if (cb.getValue()) selectedNames.push(terrainClasses[i].name);
@@ -162,21 +150,17 @@ exports.getRule = function() {
 
   if (selectedNames.length === 0) return null;
 
-  return selectedNames;  // just the selected class labels
+  return selectedNames; 
 };
-
-
 
 
 exports.setValues = function(terrainRules) {
   if (!terrainRules || !terrainRules.length) return;
 
-  // 1️⃣ Clear all checkboxes
   checkboxes.forEach(function(cb) {
     cb.setValue(false);
   });
 
-  // 2️⃣ Tick matching terrain classes
   terrainRules.forEach(function(ruleName) {
 
     for (var i = 0; i < terrainClasses.length; i++) {
@@ -188,10 +172,8 @@ exports.setValues = function(terrainRules) {
 
   });
 
-  // 3️⃣ Reload layer if ROI exists
   if (!roi_boundary) return;
 
-  // Remove existing Terrain layers
   activeMaps.forEach(function(m) {
     m.layers().forEach(function(layer) {
       if (layer.getName() && layer.getName().indexOf('Terrain') === 0) {
