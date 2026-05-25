@@ -1,11 +1,9 @@
 var roi_boundary = null;
 var loadedImage = null;
-var activeMaps = [Map]; // default to the global Map
+var activeMaps = [Map]; 
 var keepRestorationMarkerOnTopFn = null;
-// Track UI elements
 var minBox, maxBox;
 
-// Allow ROI + map registration
 exports.setROI = function(roi, mapInstance) {
   roi_boundary = roi;
   if (mapInstance && activeMaps.indexOf(mapInstance) === -1) {
@@ -13,9 +11,6 @@ exports.setROI = function(roi, mapInstance) {
   }
 };
 
-// ==================== Elevation ====================
-
-// Namespace for layer 
 var elevationUtils = {
   layer: null
 };
@@ -40,7 +35,6 @@ exports.getPanel = function() {
   });
   panel.add(controlPanel);
 
-  // --- Textboxes ---
   minBox = ui.Textbox({
     placeholder: 'Min elevation (m)',
     value: '0',
@@ -53,7 +47,6 @@ exports.getPanel = function() {
     style: {width: '120px', margin: '0 10px 0 0'}
   });
 
-  // --- Buttons ---
   var loadButton = ui.Button({
     label: 'Load',
     style: {margin: '0 5px 0 0', height: '30px'}
@@ -69,7 +62,6 @@ exports.getPanel = function() {
   controlPanel.add(loadButton);
   controlPanel.add(clearButton);
 
-  // --- Clear function ---
   var clearMap = function() {
     activeMaps.forEach(function(m) {
       m.layers().forEach(function(layer) {
@@ -82,10 +74,9 @@ exports.getPanel = function() {
     loadedImage = null;
   };
 
-  // --- Load function ---
   var loadElevation = function() {
     if (!roi_boundary) {
-      print('⚠️ Error: Please set ROI from the main panel first.');
+      print('Error: Please set ROI from the main panel first.');
       return;
     }
 
@@ -93,17 +84,15 @@ exports.getPanel = function() {
     var maxVal = parseFloat(maxBox.getValue());
 
     if (isNaN(minVal) || isNaN(maxVal) || minVal > maxVal) {
-      print('⚠️ Error: Please enter valid min/max values');
+      print('Error: Please enter valid min/max values');
       return;
     }
 
     clearMap();
 
-    // SRTM elevation data
     var dataset = ee.Image('USGS/SRTMGL1_003');
     var elevation = dataset.clip(roi_boundary);
 
-    // Binary mask: 1 where within range
     var masked = elevation.gte(minVal).and(elevation.lte(maxVal)).selfMask();
 
     activeMaps.forEach(function(m) {
@@ -127,18 +116,16 @@ exports.getPanel = function() {
   return panel;
 };
 
-// ----------------- Exposed functions -----------------
 exports.getLoadedImage = function() {
   return loadedImage;
 };
 
-// ----------------- New setter function -----------------
 exports.setRange = function(minVal, maxVal) {
   if (minBox && maxBox) {
     minBox.setValue(minVal);
     maxBox.setValue(maxVal);
   } else {
-    print('⚠️ Error: Elevation textboxes not initialized yet.');
+    print('Error: Elevation textboxes not initialized yet.');
   }
 };
 exports.setKeepMarkerOnTop = function(fn) {
@@ -156,7 +143,6 @@ exports.getRule = function () {
     return null;
   }
 
-  // Standard numeric-range rule
   return {
     min: minVal,
     max: maxVal
@@ -164,14 +150,12 @@ exports.getRule = function () {
 };
 
 
-// ----------------- Apply from JSON (AUTO LOAD) -----------------
 exports.applyFromJSON = function (minVal, maxVal) {
   if (!roi_boundary) {
-    print('⚠️ Elevation ROI not set');
+    print('Elevation ROI not set');
     return;
   }
 
-  // Update UI boxes
   if (minBox && maxBox) {
     minBox.setValue(minVal);
     maxBox.setValue(maxVal);
@@ -181,11 +165,10 @@ exports.applyFromJSON = function (minVal, maxVal) {
   maxVal = parseFloat(maxVal);
 
   if (isNaN(minVal) || isNaN(maxVal) || minVal > maxVal) {
-    print('⚠️ Invalid elevation range from JSON');
+    print('Invalid elevation range from JSON');
     return;
   }
 
-  // Clear existing elevation layers
   activeMaps.forEach(function (m) {
     m.layers().forEach(function (layer) {
       if (layer.getName() &&
@@ -195,11 +178,9 @@ exports.applyFromJSON = function (minVal, maxVal) {
     });
   });
 
-  // SRTM elevation data
   var dataset = ee.Image('USGS/SRTMGL1_003');
   var elevation = dataset.clip(roi_boundary);
 
-  // Binary mask
   var masked = elevation
     .gte(minVal)
     .and(elevation.lte(maxVal))
