@@ -1,15 +1,8 @@
-/***********************************************************
- * HWSD Soil Constraints Module (FINAL SAFE VERSION)
- ***********************************************************/
-
 var roi_boundary = null;
 var activeMaps = [Map];
 var loadedImage = null;
 var keepRestorationMarkerOnTopFn = null;
 
-/***********************************************************
- * CLASS DEFINITIONS
- ***********************************************************/
 var SOIL_CLASSES = {
 
   texture: {
@@ -30,7 +23,6 @@ var SOIL_CLASSES = {
       12: 'Loamy sand',
       13: 'Sand'
     },
-    // palette: ['brown', 'orange', 'yellow']
   },
 
   drainage: {
@@ -44,7 +36,6 @@ var SOIL_CLASSES = {
       5: 'Imperfectly drained',
       6: 'Poorly drained'
     },
-    // palette: ['red', 'yellow', 'green', 'blue']
   },
 
   ph: {
@@ -56,31 +47,20 @@ var SOIL_CLASSES = {
       3: 'Slightly Alkaline',
       4: 'Moderately Alkaline'
     },
-    // palette: ['red', 'orange', 'yellow', 'green']
   }
 };
 
-/***********************************************************
- * ASSETS
- ***********************************************************/
 var hwsdRaster = ee.Image('projects/ee-ojasvibansal/assets/hwsd_v1_2').select('b1');
 var hwsd2Raster = ee.Image('projects/sat-io/open-datasets/FAO/HWSD_V2_SMU');
 var hwsdData   = ee.FeatureCollection('projects/ee-ojasvibansal/assets/hwsd_data');
-// lookup tables
 var textureTable = ee.FeatureCollection('projects/ee-ojasvibansal/assets/HWSD2_TEXTURE_USDA');
 var drainageTable = ee.FeatureCollection('projects/ee-ojasvibansal/assets/HWSD2_DRAINAGE');
 
-/***********************************************************
- * INTERNAL STATE
- ***********************************************************/
 var soilUtils = {
   layers: [],
   checkboxes: {}
 };
 
-/***********************************************************
- * SET ROI
- ***********************************************************/
 exports.setROI = function(roi, mapInstance) {
   roi_boundary = roi;
   if (mapInstance && activeMaps.indexOf(mapInstance) === -1) {
@@ -92,10 +72,6 @@ exports.setKeepMarkerOnTop = function(fn) {
   keepRestorationMarkerOnTopFn = fn;
 };
 
-
-/***********************************************************
- * CLEAR MAP
- ***********************************************************/
 function clearMap() {
   activeMaps.forEach(function(m) {
     m.layers().forEach(function(l) {
@@ -107,11 +83,9 @@ function clearMap() {
   soilUtils.layers = [];
   loadedImage = null;
 }
+
 exports.clearMap = clearMap;
 
-/***********************************************************
- * PANEL
- ***********************************************************/
 exports.getPanel = function() {
 
   var panel = ui.Panel();
@@ -150,7 +124,6 @@ exports.getPanel = function() {
     style: {stretch: 'horizontal'}
   });
   
-  // Horizontal container
   var btnRow = ui.Panel({
     widgets: [loadBtn, clearBtn],
     layout: ui.Panel.Layout.flow('horizontal'),
@@ -162,97 +135,27 @@ exports.getPanel = function() {
   return panel;
 };
 
-/***********************************************************
- * BUILD SOIL STACK
- ***********************************************************/
 function buildSoilStack() {
 
   var IDS = ee.List(hwsdData.aggregate_array('ID'));
   
-
-  // SERVER-SIDE dictionaries
-  // var textureDict = ee.Dictionary({
-  //   'Fine': 1,
-  //   'Medium': 2,
-  //   'Coarse': 3
-  // });
-
-  // var drainageDict = ee.Dictionary({
-  //   'Moderately Well': 1,
-  //   'Well': 2,
-  //   'Somewhat Excessive': 4,
-  //   'Excessive': 4,
-  //   'Poor': 3,
-  //   'Very Poor': 3
-  // });
-  
-  // print(hwsd2Raster.bandNames()); // see exact band names
-
-  
   function fcToDict(fc, keyField, valueField) {
-    var keys = ee.List(fc.aggregate_array(keyField));    // server-side list
-    var values = ee.List(fc.aggregate_array(valueField)); // server-side list
+    var keys = ee.List(fc.aggregate_array(keyField));  
+    var values = ee.List(fc.aggregate_array(valueField)); 
     return ee.Dictionary.fromLists(keys, values);
   }
   
-  // Texture dictionary: keys = VALUE, values = CODE
   var textureDict = fcToDict(textureTable, 'VALUE', 'CODE');
-  // Drainage dictionary: keys = VALUE, values = CODE
   var drainageDict = fcToDict(drainageTable, 'VALUE', 'CODE');
-  
-  // print(textureDict);
-  // print(drainageDict);
-
-
-  /**************** TEXTURE ****************/
-  // var textureClasses = hwsdData.map(function (f) {
-  //   // Force empty/null textures to a safe placeholder
-  //   var texRaw = ee.String(
-  //     ee.Algorithms.If(
-  //       f.get('T_TEXTURE'),
-  //       f.get('T_TEXTURE'),
-  //       'UNKNOWN'
-  //     )
-  //   );
-  //   var cls = ee.Number(
-  //     textureDict.get(texRaw, 0)
-  //   );
-  //   return ee.Feature(null, {cls: cls});
-  // }).aggregate_array('cls');
-  
-  // var texture = hwsdRaster
-  //   .remap(IDS, textureClasses, 0)
-  //   .rename('Topsoil_Texture');
   
   var texture = hwsd2Raster
                 .select('TEXTURE_USDA')
                 .rename('Topsoil_Texture');
-
-
-  /**************** DRAINAGE ****************/
-  // var drainageClasses = hwsdData.map(function (f) {
-
-  //   var drRaw = f.get('DRAINAGE');
-
-  //   var cls = ee.Algorithms.If(
-  //     drRaw,
-  //     ee.Number(drainageDict.get(ee.String(drRaw), 3)),
-  //     3
-  //   );
-
-  //   return ee.Feature(null, {cls: cls});
-  // }).aggregate_array('cls');
-
-  // var drainage = hwsdRaster
-  //   .remap(IDS, drainageClasses, 3)
-  //   .rename('Soil_Drainage');
   
   var drainage = hwsd2Raster
                   .select('DRAINAGE')
                   .rename('Soil_Drainage');
 
-
-  /**************** pH (already correct) ****************/
   var phClasses = hwsdData.map(function (f) {
 
     var p = f.get('T_PH_H2O');
@@ -285,14 +188,9 @@ function buildSoilStack() {
   return ee.Image.cat([texture, drainage, ph]);
 }
 
-
-
-/***********************************************************
- * LOAD SOIL (SAFE)
- ***********************************************************/
 function loadSoil() {
   if (!roi_boundary) { 
-    print('⚠️ Set ROI first'); 
+    print('Set ROI first'); 
     return; 
   }
 
@@ -311,7 +209,6 @@ function loadSoil() {
     if (selected.length > 0) {
       var band = soilStack.select(cfg.band);
       if (band) {
-        // var mask = band.remap(selected, ee.List.repeat(1, selected.length), 0).selfMask();
         var mask = ee.ImageCollection(
               ee.List(selected)
                 .map(function(v){
@@ -333,10 +230,10 @@ function loadSoil() {
         m.addLayer(loadedImage.selfMask(), {palette:['#8D6E63']}, 'Soil');
       });
     } else {
-      print('⚠️ No mask could be created for selected soil properties.');
+      print('No mask could be created for selected soil properties.');
     }
   } else {
-    print('⚠️ No soil checkboxes selected or bands are null.');
+    print('No soil checkboxes selected or bands are null.');
   }
   
   if (keepRestorationMarkerOnTopFn) {
@@ -345,9 +242,6 @@ function loadSoil() {
 
 }
 
-/***********************************************************
- * EXPORTS
- ***********************************************************/
 exports.getLoadedImage = function() {
   return loadedImage;
 };
@@ -369,6 +263,5 @@ exports.getRule = function () {
     }
   });
 
-  // IMPORTANT: return null if nothing selected
   return Object.keys(rule).length > 0 ? rule : null;
 };
