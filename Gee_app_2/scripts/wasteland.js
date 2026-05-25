@@ -3,7 +3,7 @@ var loadedImage = null;
 var keepRestorationMarkerOnTopFn = null;
 
 var activeMaps = [Map];
-var checkboxes = [];  // global variable checkboxes
+var checkboxes = []; 
 
 exports.setROI = function(roi, mapInstance) {
   roi_boundary = roi;
@@ -16,14 +16,12 @@ exports.setKeepMarkerOnTop = function(fn) {
   keepRestorationMarkerOnTopFn = fn;
 };
 
-// ----------------- Updated getLoadedImage -----------------
 exports.getLoadedImage = function() {
   if (!roi_boundary) return null;
 
   // Load full wasteland image
   var wasteland = ee.Image("projects/ee-apoorvadewan13/assets/wasteland1516").clip(roi_boundary);
 
-  // Collect currently selected checkbox values
   var selectedValues = [];
   checkboxes.forEach(function(cb, index) {
     if (cb.getValue()) {
@@ -32,7 +30,7 @@ exports.getLoadedImage = function() {
   });
 
   if (selectedValues.length === 0) {
-    loadedImage = null;  // nothing selected
+    loadedImage = null; 
     return null;
   }
 
@@ -49,10 +47,9 @@ exports.getLoadedImage = function() {
 
 var wastelandUtils = {
   layers: [],
-  legends: []  // track legends added to map
+  legends: [] 
 };
 
-// Define the wasteland classes and values
 var wastelandClasses = [
   {name: 'Mining/ Industrial Wastelands', value: 1},
   {name: 'Scrub Land', value: 2},
@@ -111,7 +108,6 @@ exports.getPanel = function() {
         }
       });
 
-      // remove legend from map
       wastelandUtils.legends.forEach(function(legend) {
         m.widgets().remove(legend);
       });
@@ -132,7 +128,6 @@ exports.getPanel = function() {
     var wasteland = ee.Image("projects/ee-apoorvadewan13/assets/wasteland1516").clip(roi_boundary);
     loadedImage = wasteland;
 
-    // Collect selected values
     var selectedValues = [];
     checkboxes.forEach(function(cb, index) {
       if (cb.getValue()) {
@@ -148,9 +143,7 @@ exports.getPanel = function() {
 
     activeMaps.forEach(function(m) {
       m.addLayer(displayImage, vizParams, 'Wastelands');
-      // m.centerObject(roi_boundary, 6);
 
-      // ---- LEGEND ONLY FOR SELECTED ----
       var legend = ui.Panel({
         style: {
           position: 'bottom-left',
@@ -179,7 +172,6 @@ exports.getPanel = function() {
       legend.add(legendTitle);
       legend.add(makeRow('purple', 'Selected Wastelands'));
 
-      // m.add(legend);
       wastelandUtils.legends.push(legend);
     });
   };
@@ -203,38 +195,31 @@ exports.tickCheckboxForValue = function(value) {
   }
   if (!match) return;
 
-  // Tick the checkbox
   for (var j = 0; j < checkboxes.length; j++) {
     if (checkboxes[j].getLabel() === match.name) {
       checkboxes[j].setValue(true);
-      print("✅ Wasteland checkbox ticked for:", match.name, "(value:", value, ")");
+      print("Wasteland checkbox ticked for:", match.name, "(value:", value, ")");
       break;
     }
   }
 };
 
-// ---------------- Set multiple wasteland classes programmatically ----------------
 exports.setValues = function(values) {
   if (!Array.isArray(values)) return;
 
-  // Uncheck all checkboxes first
   checkboxes.forEach(function(cb) {
     cb.setValue(false);
   });
 
-  // Tick checkboxes for the specified values
   wastelandClasses.forEach(function(cls, index) {
     if (values.indexOf(cls.value) !== -1) {
       checkboxes[index].setValue(true);
     }
   });
 
-  print("✅ Wasteland checkboxes updated for values:", values);
+  print("Wasteland checkboxes updated for values:", values);
 };
 
-
-
-// ------------------- Remove legend function -------------------
 function removeLegend() {
   wastelandUtils.legends.forEach(function(legend) {
     activeMaps.forEach(function(m) {
@@ -246,9 +231,7 @@ function removeLegend() {
   wastelandUtils.legends = [];
 }
 
-// ------------------- Clear map function (updated) -------------------
 function clearMap() {
-  // Remove layers
   activeMaps.forEach(function(m) {
     m.layers().forEach(function(layer) {
       if (layer.getName() && layer.getName().indexOf('Wastelands') === 0) {
@@ -257,7 +240,6 @@ function clearMap() {
     });
   });
 
-  // Remove legends
   removeLegend();
 
   wastelandUtils.layers = [];
@@ -271,8 +253,6 @@ exports.removeLegend = removeLegend;
 
 exports.getRule = function() {
   if (!roi_boundary) return null;
-
-  // Collect selected wasteland class names
   var selectedNames = [];
   checkboxes.forEach(function(cb, i) {
     if (cb.getValue()) selectedNames.push(wastelandClasses[i].name);
@@ -280,7 +260,7 @@ exports.getRule = function() {
 
   if (selectedNames.length === 0) return null;
 
-  return selectedNames;  // just the selected class labels
+  return selectedNames; 
 };
 
 
