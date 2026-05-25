@@ -32,17 +32,15 @@ exports.getPanel = function() {
     style: {fontSize: '14px'}
   }));
 
-  // Threshold input
   var thresholdBox = ui.Textbox({
     placeholder: 'Threshold (0–250)',
-    value: '125',   // 0.5 probability ≈ 125 (scaled 0–250)
+    value: '',  
     style: {width: '100px'}
   });
 
   panel.add(ui.Label('Threshold (0–250):'));
   panel.add(thresholdBox);
 
-  // Buttons
   var loadButton = ui.Button({
     label: 'Load',
     style: {margin: '5px 5px 5px 0'}
@@ -55,10 +53,6 @@ exports.getPanel = function() {
 
   panel.add(ui.Panel([loadButton, clearButton], ui.Panel.Layout.flow('horizontal')));
 
-  // ----------------------------------------------
-  // Clear function
-  // ----------------------------------------------
-
   var clearLayer = function() {
     if (!mapInstance) return;
 
@@ -69,10 +63,6 @@ exports.getPanel = function() {
 
     loadedImage = null;
   };
-
-  // ----------------------------------------------
-  // Load function
-  // ----------------------------------------------
 
   var loadLayer = function() {
 
@@ -96,7 +86,6 @@ exports.getPanel = function() {
       img = img.clip(roi_boundary);
     }
 
-    // Create binary mask
     var mask = img.gte(threshold).selfMask();
 
     loadedImage = mask;
@@ -118,9 +107,6 @@ exports.getPanel = function() {
   return panel;
 };
 
-// ----------------------------------------------
-// Restore from JSON rules
-// ----------------------------------------------
 
 exports.setValues = function(thresholdValue, map) {
 
@@ -148,10 +134,6 @@ exports.setValues = function(thresholdValue, map) {
     'Natural Forest (threshold)'
   );
 };
-
-// ----------------------------------------------
-// Marker layering helper
-// ----------------------------------------------
 
 exports.setKeepMarkerOnTop = function(fn) {
   keepRestorationMarkerOnTopFn = fn;
