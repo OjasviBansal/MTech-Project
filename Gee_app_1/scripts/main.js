@@ -1,8 +1,6 @@
-// Import modules
 var lulcAnalysis = require('users/ojasvibansal_total_precipitation/Ecotype_App:gee-app/lulc');
 var rainfall = require('users/ojasvibansal_total_precipitation/Ecotype_App:gee-app/bioclim');
 var elevation = require('users/ojasvibansal_total_precipitation/Ecotype_App:gee-app/elevation');
-// var wasteland = require('users/ojasvibansal_total_precipitation/Ecotype_App:gee-app/wasteland');
 var ldd = require('users/ojasvibansal_total_precipitation/Ecotype_App:gee-app/ldd');
 var changeDetection = require('users/ojasvibansal_total_precipitation/Ecotype_App:gee-app/change_det');
 var fire = require('users/ojasvibansal_total_precipitation/Ecotype_App:gee-app/fire');
@@ -13,7 +11,7 @@ var one_map = require('users/ojasvibansal_total_precipitation/Ecotype_App:gee-ap
 var soil = require('users/ojasvibansal_total_precipitation/Ecotype_App:gee-app/soil');
 var naturalForests = require('users/ojasvibansal_total_precipitation/Ecotype_App:gee-app/natural_forests');
 var temp = require('users/ojasvibansal_total_precipitation/Ecotype_App:gee-app/temp');
-// var ndviClusters = require('users/ojasvibansal_total_precipitation/Ecotype_App:gee-app/ndvi_clusters');
+var spatial = require('users/ojasvibansal_total_precipitation/Ecotype_App:gee-app/spatial');
 // ================= GLOBAL VARIABLES =================
 var roi_boundary = null;
 var trainYears = {base: null, restoration: null}; // Step 3 years
@@ -76,13 +74,14 @@ function computeCurrentAndImage() {
   var f  = fire.getLoadedImage ? fire.getLoadedImage(inferYears.base, inferYears.current) : null;
   var cd = changeDetection.getInferenceImage ? changeDetection.getInferenceImage() : null;
   var lulc = lulcAnalysis.getLoadedImage ? lulcAnalysis.getLoadedImage() : null;
+  var sp = spatial.getLoadedImage ? spatial.getLoadedImage() : null;
   var lddImg = ldd.getLoadedImage ? ldd.getLoadedImage() : null;
   var nfImg = naturalForests.getLoadedImage ? naturalForests.getLoadedImage() : null;
   var onesImg = one_map.getOneMap ? one_map.getOneMap() : null;
 
   [
     r, t, e, s, tr, f, cd,
-    lulc, lddImg, nfImg, onesImg
+    lulc, sp, lddImg, nfImg, onesImg
   ].forEach(function(img) {
     if (img) masks.push(img);
   });
@@ -96,8 +95,6 @@ function computeCurrentAndImage() {
   return andImage.clip(roi_boundary).selfMask();
 }
 
-
-
 // ================= STEP 1: ECOREGION SELECTION =================
 var ecoRegions = ee.FeatureCollection('RESOLVE/ECOREGIONS/2017');
 var countries = ee.FeatureCollection("FAO/GAUL_SIMPLIFIED_500m/2015/level0");
@@ -105,7 +102,6 @@ var india = countries.filter(ee.Filter.eq('ADM0_NAME', 'India')).first();
 var india_ecoregions = ecoRegions.filterBounds(india.geometry());
 var ecotype_list = india_ecoregions.aggregate_array('ECO_NAME').distinct().getInfo();
 
-// ================= STEP 1: Click to auto-initialize =================
 controlPanel.add(ui.Label('Step 1: Select an Ecoregion by Clicking on the Map', {
   fontWeight: 'bold', fontSize: '16px'
 }));
@@ -119,48 +115,39 @@ var step1LoadingLabel = ui.Label({
 });
 controlPanel.add(step1LoadingLabel);
 
-// Color palette for ecoregions
 var ecoPalette = [
   '#f1c40f','#e67e22','#16a085','#2980b9',
   '#8e44ad','#2c3e50','#27ae60','#d35400','#7f8c8d'
 ];
 
-// Instead of a pure random column, we generate a spatially varying value
-// based on each ecoregion’s centroid to reduce same-color adjacency.
 var ecoWithRand = india_ecoregions.map(function(f) {
   var centroid = f.geometry().centroid(10);
   var lon = ee.Number(centroid.coordinates().get(0));
   var lat = ee.Number(centroid.coordinates().get(1));
-  // Create a deterministic pseudo-random number using sin/cos pattern
   var rand = lon.multiply(12.9898).add(lat.multiply(78.233))
     .sin().multiply(43758.5453).abs().mod(1);
   return f.set('rand', rand);
 });
 
-// Map to assign an integer color index (0 .. palette.length-1)
 var ecoWithColorIndex = ecoWithRand.map(function(f) {
   var idx = ee.Number(f.get('rand')).multiply(ecoPalette.length).floor();
   return f.set('colorIndex', idx);
 });
 
-// Paint the FeatureCollection into an image using the 'colorIndex' property
 var ecoImage = ee.Image().byte().paint({
   featureCollection: ecoWithColorIndex,
   color: 'colorIndex'
 });
 
-// Visualize with the palette
 trainingMap.addLayer(
   ecoImage.visualize({min: 0, max: ecoPalette.length - 1, palette: ecoPalette}),
   {},
   'All Ecoregions'
 );
 
-// Variables to track
 var roi_set = false;
 var selectedEcoFeature = null;
 
-// Utility function to replace an existing layer if it already exists
 function replaceLayer(map, layerName, layerObj) {
   var layers = map.layers();
   for (var i = layers.length() - 1; i >= 0; i--) {
@@ -182,8 +169,6 @@ function replaceLayer(map, layerName, layerObj) {
   map.layers().add(newLayer);
 }
 
-
-// Handler for ecoregion click
 var ecoClickHandler = function(coords) {
   if (roi_set) {
     print('ROI already set. Clear location to start again.');
@@ -196,22 +181,19 @@ var ecoClickHandler = function(coords) {
 
   clickedEco.evaluate(function(f) {
     if (!f) {
-      print('⚠️ Clicked point is outside India ecoregions.');
+      print('Clicked point is outside India ecoregions.');
       return;
     }
 
     var ecoName = f.properties.ECO_NAME;
     print('Selected ecoregion: ' + ecoName);
 
-    // Save selected feature + ROI geometry
     selectedEcoFeature = ee.Feature(f);
     roi_boundary = selectedEcoFeature.geometry().intersection(india.geometry(), ee.ErrorMargin(1));
 
-    // Clear both maps (remove colors + borders)
     trainingMap.layers().reset();
     inferenceMap.layers().reset();
 
-    // Draw ROI outline in black
     var roiOutline = ee.Image().byte().paint({
       featureCollection: ee.FeatureCollection([selectedEcoFeature]),
       color: 1,
@@ -224,7 +206,6 @@ var ecoClickHandler = function(coords) {
     trainingMap.centerObject(selectedEcoFeature, 6);
     inferenceMap.centerObject(selectedEcoFeature, 6);
 
-    // Pass ROI to other modules
     lulcAnalysis.setROI(roi_boundary, inferenceMap);
     naturalForests.setROI(roi_boundary, inferenceMap);
     rainfall.setROI(roi_boundary, trainingMap);
@@ -236,17 +217,16 @@ var ecoClickHandler = function(coords) {
     changeDetection.setROI(roi_boundary, trainingMap);
     fire.setROI(roi_boundary, trainingMap);
     one_map.setROI(roi_boundary, inferenceMap);
+    spatial.setROI(roi_boundary, inferenceMap);
 
     roi_set = true;
     step1LoadingLabel.setValue('Ecoregion set as: ' + ecoName);
   });
 };
 
-// Attach click handler to both maps
 trainingMap.onClick(ecoClickHandler);
 inferenceMap.onClick(ecoClickHandler);
 
-// Status label for auto-loading layers
 var loadingLabel = ui.Label({
   value: '',
   style: {fontSize: '14px', color: 'blue', margin: '6px 0'}
@@ -278,7 +258,6 @@ yearPanel.add(restorationStartBox);
 yearPanel.add(ui.Label('Base year:'));
 yearPanel.add(preDegBox);
 
-
 // Panel for Step 6 years
 var yearPanelApp = ui.Panel({
   layout: ui.Panel.Layout.flow('vertical'),
@@ -287,7 +266,6 @@ var yearPanelApp = ui.Panel({
 yearPanelApp.add(ui.Label('Current year:'));
 yearPanelApp.add(currentYearBox);
 
-// Set Location button (only sets ROI now)
 var setEcoLocationBtn = ui.Button({
   label: 'Set Location',
   onClick: function() {
@@ -299,7 +277,6 @@ var setEcoLocationBtn = ui.Button({
     var selectedFeature = india_ecoregions.filter(ee.Filter.eq('ECO_NAME', selectedEco));
     roi_boundary = selectedFeature.geometry().intersection(india.geometry(), ee.ErrorMargin(1));
 
-    // Pass ROI to modules
     lulcAnalysis.setROI(roi_boundary, inferenceMap);
     rainfall.setROI(roi_boundary, trainingMap);
     temp.setROI(roi_boundary, trainingMap);
@@ -310,15 +287,14 @@ var setEcoLocationBtn = ui.Button({
     changeDetection.setROI(roi_boundary, trainingMap);
     fire.setROI(roi_boundary, trainingMap);
     one_map.setROI(roi_boundary, inferenceMap);
-    // ndviClusters.setROI(roi_boundary, trainingMap);
+    spatial.setROI(roi_boundary, inferenceMap);
 
     var roiOutline = ee.Image().byte().paint({
     featureCollection: selectedFeature,
     color: 1,
-    width: 2   // outline thickness in pixels
+    width: 2  
   });
   
-    // Draw ROI
     replaceLayer(trainingMap, 'ROI Boundary', ui.Map.Layer(roiOutline, {palette: ['black']}, 'ROI Boundary'));
     replaceLayer(inferenceMap, 'ROI Boundary', ui.Map.Layer(roiOutline, {palette: ['black']}, 'ROI Boundary'));
 
@@ -327,7 +303,6 @@ var setEcoLocationBtn = ui.Button({
   }
 });
 
-// Clear Location button
 var clearEcoLocationBtn = ui.Button({
   label: 'Clear Location',
   onClick: function() {
@@ -336,11 +311,11 @@ var clearEcoLocationBtn = ui.Button({
     roi_set = false;
 
     [trainingMap, inferenceMap].forEach(function(m) {
-      m.layers().reset(); // clears all map layers
+      m.layers().reset(); 
     });
 
     [trainingMap, inferenceMap].forEach(function(m) {
-      // Collect widgets to remove (avoid mutating during iteration)
+      
       var widgetsToRemove = [];
       m.widgets().forEach(function(w) {
         widgetsToRemove.push(w);
@@ -356,7 +331,6 @@ var clearEcoLocationBtn = ui.Button({
     if (typeof fire !== 'undefined' && fire.legends) fire.legends = [];
     if (typeof changeDetection !== 'undefined' && changeDetection.legends) changeDetection.legends = [];
 
-    // Reset last validation references if they exist
     if (lastValidationLayer) {
       trainingMap.remove(lastValidationLayer);
       lastValidationLayer = null;
@@ -384,7 +358,6 @@ controlPanel.add(ui.Label({
 }));
 controlPanel.add(loadingLabel);
 
-// --- Set & Clear buttons side by side ---
 var buttonRow = ui.Panel({
   layout: ui.Panel.Layout.flow('horizontal'),
   style: {margin: '10px 0', padding: '0 10px'}
@@ -395,6 +368,7 @@ function show_legend_on_map() {
   if (!roi_boundary) return;
   var layers = [
     {image: lulcAnalysis.getLoadedImage ? lulcAnalysis.getLoadedImage() : null, name: 'LULC'},
+    {image: spatial.getLoadedImage ? spatial.getLoadedImage() : null, name: 'Spatial'},
     {image: rainfall.getLoadedImage ? rainfall.getLoadedImage() : null, name: 'Rainfall'},
     {image: temp.getLoadedImage ? temp.getLoadedImage() : null, name: 'Temperature'},
     {image: elevation.getLoadedImage ? elevation.getLoadedImage() : null, name: 'Elevation'},
@@ -418,6 +392,7 @@ function show_legend_on_map() {
     'Change Detection': ['red'],
     'Fire': ['pink'],
     'Terrain': ['green'],
+    'Spatial': ['#9c27b0'],
     'ONEs': ['#00ffaa'],
     'Natural Forests': ['teal'],
     'Validation pixels': ['#FFFF00']};
@@ -460,10 +435,9 @@ var setRestorationBtn = ui.Button({
   style: {margin: '0 5px 0 0'},
   onClick: function() {
     if (!restorationPoint) {
-      print('⚠️ Click on the map to select a restoration site first.');
+      print('Click on the map to select a restoration site first.');
       return;
     }
-    // Center maps at user-selected point & zoom
     trainingMap.setCenter(
       restorationPoint.coordinates().get(0).getInfo(),
       restorationPoint.coordinates().get(1).getInfo(),
@@ -492,7 +466,6 @@ buttonRow.add(setRestorationBtn);
 buttonRow.add(clearAndSetAgainButton);
 controlPanel.add(buttonRow);
 
-// Variables to store restoration site info
 var restorationPoint = null;
 var restorationZoom = null;
 var restorationSet = false;
@@ -501,7 +474,6 @@ var restorationLayerObj = null;
 function clearRestorationSelection() {
   print('Clearing restoration site and resetting selection...');
 
-  // Remove restoration marker but keep ROI boundary
   trainingMap.layers().forEach(function(layer) {
     if (layer.getName() === 'Restoration Site') {
       trainingMap.remove(layer);
@@ -512,23 +484,19 @@ function clearRestorationSelection() {
       inferenceMap.remove(layer);
     }
   });
-  // Reset variables
   restorationPoint = null;
   restorationZoom = null;
   restorationSet = false;
   loadingLabel.setValue('Click on the map to select a new point.');
 
-  // Keep the ecoregion boundary from Step 1
   if (roi_boundary && roi_set) {
-    // Re-enable the click handler for new selection
     trainingMap.onClick(restorationClickHandler);
-    print('🟢 You can now click again on the map to set a new restoration site.');
+    print('You can now click again on the map to set a new restoration site.');
   } else {
-    print('⚠️ No ecoregion selected. Please complete Step 1 first.');
+    print('No ecoregion selected. Please complete Step 1 first.');
   }
 }
   
-// Step 2 click handler
 var restorationClickHandler = function(coords) {
   if (!roi_set || !roi_boundary) {
     print('Please select an ecoregion first (Step 1).');
@@ -555,13 +523,11 @@ var restorationClickHandler = function(coords) {
   point.evaluate(function() {
     loadingLabel.setValue('Loaded layers at clicked point.');
   });
-  // print('Restoration site:', coords.lon, coords.lat, 'Zoom:', restorationZoom);
 
-  // ---------------- OLD CLICK HANDLER LOGIC BEGINS ----------------
   var clickedEco = india_ecoregions.filterBounds(point).first();
   clickedEco.evaluate(function(f) {
     if (!f) {
-      restorationStatus.setValue('⚠️ Clicked point is outside India ecoregions.');
+      restorationStatus.setValue('Clicked point is outside India ecoregions.');
       return;
     }
     var ecoName = f.properties.ECO_NAME;
@@ -570,7 +536,6 @@ var restorationClickHandler = function(coords) {
 
     roi_boundary = ee.Feature(f).geometry().intersection(india.geometry(), ee.ErrorMargin(1));
 
-    // Pass ROI to modules
     lulcAnalysis.setROI(roi_boundary, inferenceMap);
     rainfall.setROI(roi_boundary, trainingMap);
     temp.setROI(roi_boundary, trainingMap);
@@ -580,9 +545,8 @@ var restorationClickHandler = function(coords) {
     ldd.setROI(roi_boundary, inferenceMap);
     changeDetection.setROI(roi_boundary, trainingMap);
     fire.setROI(roi_boundary, trainingMap);
-    // ndviClusters.setROI(roi_boundary, trainingMap);
+    spatial.setROI(roi_boundary, inferenceMap);
 
-    // Draw ROI outline
     var roiOutline = ee.Image().byte().paint({
       featureCollection: ee.FeatureCollection([f]),
       color: 1,
@@ -592,7 +556,6 @@ var restorationClickHandler = function(coords) {
     replaceLayer(inferenceMap, 'ROI Boundary', ui.Map.Layer(roiOutline, {palette: ['black']}, 'ROI Boundary'));
   });
 
-  // Auto-initialize datasets
   var bio12 = ee.Image('WORLDCLIM/V1/BIO').select('bio12');
   var rainfallVal = bio12.reduceRegion({
     reducer: ee.Reducer.first(),
@@ -611,7 +574,7 @@ var restorationClickHandler = function(coords) {
     scale: 1000
   }).get('bio01');
   tempVal.evaluate(function(val) {
-    temp.setRange(val, val);   // assuming your temp module is named "temp"
+    temp.setRange(val, val);  
     print('Temperature at clicked point: ' + val + ' °C');
   });
 
@@ -626,24 +589,20 @@ var restorationClickHandler = function(coords) {
     print('Elevation at clicked point: ' + val + ' m');
   });
   
-  // ================= SOIL =================
   var soilSample = soil.getSoilAtPoint(point);
   
   if (soilSample !== null) {
     soilSample.evaluate(function(res) {
       if (!res) return;
   
-      // Texture
       if (res.Topsoil_Texture) {
         soil.tickCheckboxForValue('texture', Number(res.Topsoil_Texture));
       }
   
-      // Drainage
       if (res.Soil_Drainage) {
         soil.tickCheckboxForValue('drainage', Number(res.Soil_Drainage));
       }
   
-      // pH
       if (res.Topsoil_pH_Class) {
         soil.tickCheckboxForValue('ph', Number(res.Topsoil_pH_Class));
       }
@@ -651,8 +610,6 @@ var restorationClickHandler = function(coords) {
       print('Soil at clicked point:', res);
     });
   }
-
-
 
   var fireVal = fire.getFireAtPoint(point);
   if (fireVal) {
@@ -680,8 +637,9 @@ var restorationClickHandler = function(coords) {
   });
 
 };
-// Attach handler to left map only
+
 trainingMap.onClick(restorationClickHandler);
+
 function keepRestorationMarkerOnTop() {
   if (!restorationLayerObj) return;
   [trainingMap, inferenceMap].forEach(function(m) {
@@ -692,7 +650,7 @@ function keepRestorationMarkerOnTop() {
       }
     }
     var freshMarkerLayer = ui.Map.Layer(restorationLayerObj, {}, 'Restoration Site');
-    m.layers().add(freshMarkerLayer); // adds last → always topmost
+    m.layers().add(freshMarkerLayer); 
   });
 }
 
@@ -706,7 +664,7 @@ terrain.setKeepMarkerOnTop(keepRestorationMarkerOnTop);
 changeDetection.setKeepMarkerOnTop(keepRestorationMarkerOnTop);
 lulcAnalysis.setKeepMarkerOnTop(keepRestorationMarkerOnTop);
 one_map.setKeepMarkerOnTop(keepRestorationMarkerOnTop);
-// ndviClusters.setKeepMarkerOnTop(keepRestorationMarkerOnTop);
+spatial.setKeepMarkerOnTop(keepRestorationMarkerOnTop);
 
 
 // ================= Upload / Paste Rules JSON =================
@@ -727,21 +685,19 @@ var rulesJsonTextbox = ui.Textbox({
     height: '32px',
     fontFamily: 'monospace'
   },
-  // multiline: true
 });
-
 
 function getRulesFromTextbox() {
   var jsonText = rulesJsonTextbox.getValue();
   if (!jsonText || jsonText.trim().length === 0) {
-    print('⚠️ Please paste valid rules JSON first.');
+    print('Please paste valid rules JSON first.');
     return null;
   }
 
   try {
     return JSON.parse(jsonText);
   } catch (e) {
-    print('❌ Invalid JSON:', e);
+    print('Invalid JSON:', e);
     return null;
   }
 }
@@ -754,7 +710,6 @@ var loadRulesBtn = ui.Button({
     var rules = getRulesFromTextbox();
     if (!rules) return;
     
-    // ================= LOAD METADATA FROM JSON =================
     if (rules.metadata) {
     
       if (rules.metadata.project_name) {
@@ -777,16 +732,14 @@ var loadRulesBtn = ui.Button({
         projectUseCase = rules.metadata.use_case;
       }
     
-      print('📌 Project metadata loaded from JSON');
+      print('Project metadata loaded from JSON');
     }
 
-    // ================= YEARS (TRAINING ONLY) =================
     if (rules.years && rules.years.train) {
       trainYears.base = rules.years.train.base;
       trainYears.restoration = rules.years.train.restoration;
     }
 
-    // ================= SHARED MODULES → TRAINING MAP =================
     if (rules.rainfall) {
       rainfall.setROI(roi_boundary, trainingMap);
       rainfall.applyFromJSON(rules.rainfall.min, rules.rainfall.max);
@@ -828,10 +781,8 @@ var loadRulesBtn = ui.Button({
       changeDetection.applyFromJSON(trainingMap, null);
     }
     
-    // ================= STEP 5: VALIDATION PIXELS =================
     var masks = [];
     
-    // Collect masks from modules that have loaded images
     var r = rainfall.getLoadedImage ? rainfall.getLoadedImage() : null;
     var t = temp.getLoadedImage ? temp.getLoadedImage() : null;
     var e = elevation.getLoadedImage ? elevation.getLoadedImage() : null;
@@ -859,10 +810,10 @@ var loadRulesBtn = ui.Button({
         ui.Map.Layer(step5ValidationMask.selfMask(), vis, 'Validation pixels')
       );
     
-      print('✅ Validation pixels computed');
+      print('Validation pixels computed');
     }
 
-    print('📘 Training map rules loaded');
+    print('Training map rules loaded');
   }
 });
 
@@ -896,6 +847,11 @@ var applyRulesBtn = ui.Button({
       lulcAnalysis.setROI(roi_boundary, inferenceMap, inferYears.current);
       lulcAnalysis.setValues(rules.lulc, inferenceMap);
     }
+    
+    if (rules.spatial) {
+      spatial.setROI(roi_boundary, inferenceMap, inferYears.current);
+      spatial.setValues(rules.spatial, inferenceMap);
+    }
 
     if (rules.land_degradation) {
       ldd.setROI(roi_boundary, inferenceMap);
@@ -911,7 +867,6 @@ var applyRulesBtn = ui.Button({
     // ================= FINAL INFERENCE AND PIXELS =================
     var masks = [];
     
-    // Collect masks from modules that are loaded on inference map
     var r  = rainfall.getLoadedImage ? rainfall.getLoadedImage() : null;
     var t  = temp.getLoadedImage ? temp.getLoadedImage() : null;
     var e  = elevation.getLoadedImage ? elevation.getLoadedImage() : null;
@@ -932,7 +887,6 @@ var applyRulesBtn = ui.Button({
     
       var vis = {palette:['yellow'], min:0, max:1};
       
-      // remove existing inference pixels layer if present
       var layers = inferenceMap.layers();
       
       for (var i = layers.length() - 1; i >= 0; i--) {
@@ -948,10 +902,10 @@ var applyRulesBtn = ui.Button({
         ui.Map.Layer(inferenceMask.selfMask(), vis, 'Computed pixels')
       );
     
-      print('✅ Inference AND pixels computed');
+      print('Inference AND pixels computed');
     }
 
-    print('📕 Inference map rules applied');
+    print('Inference map rules applied');
     currentAndImage = computeCurrentAndImage();
   }
 });
@@ -976,7 +930,7 @@ var applyRulesBtn = ui.Button({
 
     var jsonText = rulesJsonTextbox.getValue();
     if (!jsonText || jsonText.trim().length === 0) {
-      print('⚠️ Please paste valid rules JSON first.');
+      print('Please paste valid rules JSON first.');
       return;
     }
 
@@ -984,13 +938,10 @@ var applyRulesBtn = ui.Button({
     try {
       rules = JSON.parse(jsonText);
     } catch (e) {
-      print('❌ Invalid JSON:', e);
+      print('Invalid JSON:', e);
       return;
     }
 
-    // =================================================
-    // 1️⃣ APPLY YEARS FIRST (CRITICAL)
-    // =================================================
     if (rules.years) {
 
       // ---- Training map years (Step 3) ----
@@ -1005,10 +956,6 @@ var applyRulesBtn = ui.Button({
         inferYears.current = rules.years.infer.current;
       }
     }
-
-    // =================================================
-    // 2️⃣ BIND MODULES TO MAPS
-    // =================================================
 
     // ---------- SHARED MODULES (BOTH MAPS) ----------
     if (rules.rainfall) {
@@ -1072,6 +1019,11 @@ var applyRulesBtn = ui.Button({
       lulcAnalysis.setROI(roi_boundary, inferenceMap, inferYears.current);
       lulcAnalysis.setValues(rules.lulc, inferenceMap);
     }
+    
+    if (rules.spatial) {
+      spatial.setROI(roi_boundary, inferenceMap, inferYears.current);
+      spatial.setValues(rules.spatial, inferenceMap);
+    }
 
     if (rules.land_degradation) {
       ldd.setROI(roi_boundary, inferenceMap);
@@ -1084,7 +1036,7 @@ var applyRulesBtn = ui.Button({
       one_map.setValues(rules.ones);
     }
 
-    print('✅ Rules + years applied correctly to both maps');
+    print('Rules + years applied correctly to both maps');
   }
 });
 
@@ -1137,7 +1089,7 @@ var saveMetadataBtn = ui.Button({
     projectContact = contactBox.getValue();
     projectUseCase = useCaseDropdown.getValue();
 
-    print('✅ Project Metadata Saved');
+    print('Project Metadata Saved');
     print('Project Name:', projectName);
     print('Description:', projectDescription);
     print('Contact:', projectContact);
@@ -1146,7 +1098,6 @@ var saveMetadataBtn = ui.Button({
 });
 
 controlPanel.add(saveMetadataBtn);
-
 
 
 // ================= STEP 3 =================
@@ -1165,22 +1116,20 @@ controlPanel.add(temp.getPanel());
 controlPanel.add(elevation.getPanel());
 controlPanel.add(soil.getPanel());
 controlPanel.add(terrain.getPanel());
-// controlPanel.add(ndviClusters.getPanel());
 
-// --- Reusable Go To My Location button ---
 function createGoToLocationButton(map, labelText) {
   return ui.Button({
     label: labelText,
     style: {stretch: 'horizontal'},
     onClick: function() {
       if (!restorationPoint || !restorationZoom) {
-        print('⚠️ Please select a restoration site first using "Set Restoration Location".');
+        print('Please select a restoration site first using "Set Restoration Location".');
         return;
       }
       var lon = restorationPoint.coordinates().get(0).getInfo();
       var lat = restorationPoint.coordinates().get(1).getInfo();
       map.setCenter(lon, lat, restorationZoom);
-      print('📍 Moved map to restoration site at (' + lon.toFixed(4) + ', ' + lat.toFixed(4) + ')');
+      print('Moved map to restoration site at (' + lon.toFixed(4) + ', ' + lat.toFixed(4) + ')');
     }
   });
 }
@@ -1201,9 +1150,9 @@ var legendPanel = null;
 function showAndOnMap() {
   if (!roi_boundary) return;
 
-  // Collect loaded images with names
   var layers = [
     {image: lulcAnalysis.getLoadedImage ? lulcAnalysis.getLoadedImage() : null, name: 'LULC'},
+    {image: spatial.getLoadedImage ? spatial.getLoadedImage() : null, name: 'Spatial'},
     {image: rainfall.getLoadedImage ? rainfall.getLoadedImage() : null, name: 'Rainfall'},
     {image: temp.getLoadedImage ? temp.getLoadedImage() : null, name: 'Temperature'},
     {image: elevation.getLoadedImage ? elevation.getLoadedImage() : null, name: 'Elevation'},
@@ -1226,55 +1175,13 @@ function showAndOnMap() {
     'Change Detection': ['red'],
     'Fire': ['pink'],
     'Terrain': ['green'],
+    'Spatial': ['#9c27b0'],
     'Open Natural Ecosystems (ONEs)': ['#00ffaa'],
     'Validation pixels': ['#FFFF00']
   };
   
-  var desiredOrder = ['Rainfall','Temperature','Elevation','Soil','Terrain','Land Degradation','Fire','Change Detection','LULC', 'Validation pixels'];
+  var desiredOrder = ['Rainfall','Temperature','Elevation','Soil','Terrain','Land Degradation','Fire','Change Detection','LULC','Spatial', 'Validation pixels'];
 
-  // // Filter out nulls
-  // var filteredLayers = layers.filter(function(l) {
-  //   return l.image;
-  // });
-
-  // // ✅ Even if there are no layers, still add legend
-  // if (filteredLayers.length === 0) {
-  //   print('No layers loaded yet — showing legend only.');
-  // } else {
-  //   // Remove previous layers
-  //   var mapLayers = trainingMap.layers();
-  //   for (var j = mapLayers.length() - 1; j >= 0; j--) {
-  //     var layer = mapLayers.get(j);
-  //     var shouldRemove = filteredLayers.some(function(l) {
-  //       return l.name === layer.getName();
-  //     });
-  //     if (layer.getName() === 'AND of Layers' || shouldRemove) {
-  //       mapLayers.remove(layer);
-  //     }
-  //   }
-
-  //   // Sort and add each valid layer
-  //   filteredLayers.sort(function(a, b) {
-  //     return desiredOrder.indexOf(a.name) - desiredOrder.indexOf(b.name);
-  //   });
-
-  //   filteredLayers.forEach(function(l) {
-  //     trainingMap.addLayer(l.image.clip(roi_boundary),
-  //       {palette: layerPalettes[l.name], min: 0, max: 1}, l.name);
-  //   });
-
-  //   // Add AND layer if at least one image exists
-  //   if (filteredLayers.length > 0) {
-  //     var andImage = filteredLayers[0].image.gt(0).selfMask();
-  //     for (var i = 1; i < filteredLayers.length; i++) {
-  //       andImage = andImage.and(filteredLayers[i].image.gt(0).selfMask());
-  //     }
-  //     andImage = andImage.clip(roi_boundary).selfMask();
-  //     trainingMap.addLayer(andImage,
-  //       {palette: layerPalettes['AND of Layers'], min: 0, max: 1},
-  //       'AND of Layers');
-  //   }
-  // }
 
   function addLegendToMap(mapObj) {
     var legendPanel = ui.Panel({
@@ -1300,7 +1207,6 @@ function showAndOnMap() {
       legendPanel.add(row);
     });
     
-    // Avoid duplicates — remove existing legend first if any
     mapObj.widgets().forEach(function(widget) {
       if (widget instanceof ui.Panel && widget.style().get('position') === 'bottom-left') {
         mapObj.remove(widget);}
@@ -1326,9 +1232,7 @@ var enterStep3YearsBtn = ui.Button({
     trainYears.restoration = valEnd;
     changeDetection.setYears(valStart, valEnd, 'validation');
     fire.setYears(valStart, valEnd, 'validation');
-    // ndviClusters.setYear(trainYears.restoration);
     print('Step 4 years saved:');
-    // showAndOnMap();
   }
 });
 controlPanel.add(ui.Panel([enterStep3YearsBtn], ui.Panel.Layout.flow('horizontal')));
@@ -1342,10 +1246,8 @@ controlPanel.add(ui.Label({
   style: {'fontSize': '14px'}
 }));
 
-// Track last validation layer + legend
 var lastValidationLayer = null;
 var lastValidationLegend = null;
-// var step5ValidationMask = null;
 var step5MaskNoChangeDet = null;
 var step5UsedChangeDet = false;
 var runValidationBtn = ui.Button({
@@ -1353,7 +1255,6 @@ var runValidationBtn = ui.Button({
   onClick: function() {
     if (!inferenceActive) {
     inferenceActive = true;
-    // Now bind inference map properly
     rainfall.setROI(roi_boundary, inferenceMap);
     temp.setROI(roi_boundary, inferenceMap);
     elevation.setROI(roi_boundary, inferenceMap);
@@ -1364,7 +1265,6 @@ var runValidationBtn = ui.Button({
     ldd.setROI(roi_boundary, inferenceMap);
     one_map.setROI(roi_boundary, inferenceMap);
   
-    // Draw ROI boundary once
     var roiOutline = ee.Image().byte().paint({
       featureCollection: ee.FeatureCollection([selectedEcoFeature]),
       color: 1,
@@ -1376,7 +1276,6 @@ var runValidationBtn = ui.Button({
       ui.Map.Layer(roiOutline, {palette: ['black']}, 'ROI Boundary')
     );
   
-    // Enable map linking ONLY NOW
     ui.Map.Linker([trainingMap, inferenceMap]);
     print('Inference map activated at Step 5');
    }
@@ -1398,7 +1297,6 @@ var runValidationBtn = ui.Button({
     } else {
       print('Step 4 years not set — skipping change detection & fire.');
     }
-    // Get the training layers
   var rainfallImg   = rainfall.getLoadedImage && rainfall.getLoadedImage() ? rainfall.getLoadedImage() : null;
   var tempImg   = temp.getLoadedImage && temp.getLoadedImage() ? temp.getLoadedImage() : null;
   var elevationImg  = elevation.getLoadedImage && elevation.getLoadedImage() ? elevation.getLoadedImage() : null;
@@ -1424,10 +1322,9 @@ var runValidationBtn = ui.Button({
       step5UsedChangeDet = false;
       step5MaskNoChangeDet = baseMask;
       step5ValidationMask = baseMask.clip(roi).selfMask();
-      print('⚠️ No change detection used in Step 5.');
+      print('No change detection used in Step 5.');
     }
     
-    // --- Hide all current layers except 'Restoration Site' ---
     trainingMap.layers().forEach(function(layer) {
     var name = layer.getName ? layer.getName() : '';
     if (name && name.toLowerCase().indexOf('lulc') !== -1) {
@@ -1441,13 +1338,12 @@ var runValidationBtn = ui.Button({
   inferenceMap.layers().forEach(function(layer) {
   var name = layer.getName ? layer.getName() : '';
   if (name && (name.indexOf('Restoration Site') !== -1 )) {
-    layer.setShown(true);   // keep visible
+    layer.setShown(true); 
   } else {
-    layer.setShown(false);  // hide everything else
+    layer.setShown(false); 
   }
 });
 
-    // Display on map
     var validationLayer = ui.Map.Layer(step5ValidationMask, {palette: ['yellow'], min: 0, max: 1}, 'Validation pixels');
     replaceLayer(trainingMap, 'Validation pixels', validationLayer);
 
@@ -1489,7 +1385,7 @@ var enterStep6YearsBtn = ui.Button({
     }
     inferYears.current = currentYear;
     lulcAnalysis.setYears(currentYear);
-    // ndviClusters.setYear(currentYear);
+    spatial.setYears(currentYear);
     if (trainYears.restoration) {
       changeDetection.setYears(trainYears.restoration, currentYear, 'test');
       print('Step 6 years saved (with change detection).');
@@ -1500,6 +1396,7 @@ var enterStep6YearsBtn = ui.Button({
 });
 controlPanel.add(ui.Panel([enterStep6YearsBtn], ui.Panel.Layout.flow('horizontal')));
 controlPanel.add(lulcAnalysis.getPanel());
+controlPanel.add(spatial.getPanel());
 controlPanel.add(one_map.getPanel())
 controlPanel.add(ldd.getPanel());
 controlPanel.add(naturalForests.getPanel());
@@ -1533,6 +1430,7 @@ var computeAndBtn = ui.Button({
     var currentYear = inferYears.current;
 
     var lulcImg       = lulcAnalysis.getLoadedImage && lulcAnalysis.getLoadedImage() ? lulcAnalysis.getLoadedImage() : null;
+    var spatialImg       = spatial.getLoadedImage && spatial.getLoadedImage() ? spatial.getLoadedImage() : null;
     var onesImg = one_map.getOneMap();
     var rainfallImg   = rainfall.getLoadedImage && rainfall.getLoadedImage() ? rainfall.getLoadedImage() : null;
     var tempImg   = temp.getLoadedImage && temp.getLoadedImage() ? temp.getLoadedImage() : null;
@@ -1546,7 +1444,6 @@ var computeAndBtn = ui.Button({
     var andImage; 
     if (step5ValidationMask) {
       andImage = step5ValidationMask;
-      // If change detection was used earlier, replace with test-year version
       if (changeDetImg) {
         andImage = andImage.and(changeDetImg.gt(0));
       }
@@ -1559,13 +1456,12 @@ var computeAndBtn = ui.Button({
         andImage = andImage.and(img.gt(0));
       });
     }
-    [lulcImg, lddImg, nfImg]
+    [lulcImg, spatialImg, lddImg, nfImg]
       .filter(function(img){ return img; })
       .forEach(function(img){
         andImage = andImage.and(img.gt(0));
       });
 
-    // Optional ONEs constraint
     if (onesImg) {
       andImage = andImage.and(onesImg.gt(0));
     }
@@ -1586,7 +1482,6 @@ var computeAndBtn = ui.Button({
     });
     replaceLayer(inferenceMap, 'Computed pixels', ui.Map.Layer(andImage, {palette:['yellow'], min:0, max:1}, 'Computed pixels'));
     
-    // --- Add legend for computed pixels ---
     var computedLegend = ui.Panel({
       style: {
         position: 'bottom-left',
@@ -1678,11 +1573,6 @@ var fullSplit = ui.SplitPanel({firstPanel: mapsWrapper, secondPanel: controlPane
 ui.root.clear();
 ui.root.add(fullSplit);
 
-
-
-
-
-
 // ====================== 1) Collect Rules Function =========================
 function unwrap(ruleObj) {
   if (!ruleObj) return null;
@@ -1731,6 +1621,10 @@ function getAllRulesJSON_Object() {
   if (lulcAnalysis && lulcAnalysis.getRule) {
     json.lulc = lulcAnalysis.getRule();
   }
+  
+  if (spatial && spatial.getRule) {
+    json.spatial = spatial.getRule();
+  }
 
   if (changeDetection && changeDetection.getRule) {
     json.change_detection = changeDetection.getRule();
@@ -1752,7 +1646,7 @@ function applyRulesFromJSON(jsonText) {
   try {
     rules = JSON.parse(jsonText);
   } catch (e) {
-    print('❌ Invalid JSON');
+    print('Invalid JSON');
     return;
   }
 
@@ -1789,6 +1683,10 @@ function applyRulesFromJSON(jsonText) {
   if (rules.lulc && lulcAnalysis.setValues) {
     lulcAnalysis.setValues(rules.lulc);
   }
+  
+  if (rules.spatial && spatial.setValues) {
+    spatial.setValues(rules.spatial);
+  }
 
   if (rules.change_detection && changeDetection.setValues) {
     changeDetection.setValues(rules.change_detection);
@@ -1799,17 +1697,15 @@ function applyRulesFromJSON(jsonText) {
   }
 
   showAndOnMap();
-  print('✅ Rules successfully re-initialized from JSON');
+  print('Rules successfully re-initialized from JSON');
 }
-
-
 
 
 var exportVectorBtn = ui.Button({
   label: 'Export AND as Polygons (SHP)',
   onClick: function() {
     if (!currentAndImage || !roi_boundary) {
-      print('⚠️ Compute AND and set ROI first.');
+      print('Compute AND and set ROI first.');
       return;
     }
 
@@ -1823,44 +1719,15 @@ var exportVectorBtn = ui.Button({
 
     var polygons = exportImage.reduceToVectors({
       geometry: roi_boundary,
-      scale: 30,                         // MUST be 30 to match LULC resolution
+      scale: 30,                     
       geometryType: 'polygon',
       eightConnected: true,
       labelProperty: 'AND',
       maxPixels: 1e13,
-      bestEffort: false                  // Set to false to force accuracy
+      bestEffort: false           
     });
 
-    // Final spatial filter to remove any "ghost" pixels outside the boundary
     var finalPolygons = polygons.filterBounds(roi_boundary);
-    // var finalPolygons = polygons
-    // .filterBounds(roi_boundary)
-    // .map(function(feature) {
-    //   return feature.set({
-    //     'style': {
-    //       color: 'ffff00',        // Yellow outline
-    //       fillColor: 'ffff00aa',  // Yellow fill (aa = transparency)
-    //       width: 1
-    //     }
-    //   });
-    // });
-    // var finalPolygons = polygons
-    // .filterBounds(roi_boundary)
-    // .map(function(feature) {
-    //   return feature.set({
-    //     'stroke': '#ffff00',      // outline color (yellow)
-    //     'stroke-width': 1,
-    //     'fill': '#ffff00',        // fill color (yellow)
-    //     'fill-opacity': 0.6       // transparency
-    //   });
-    // });
-
-    // Export.table.toDrive({
-    //   collection: finalPolygons,
-    //   description: 'Export_AND_polygon',
-    //   folder: 'GEE_Exports',
-    //   fileFormat: 'SHP'
-    // });
     
     var url = finalPolygons.getDownloadURL({
       format: 'kml'
@@ -1881,8 +1748,6 @@ var exportVectorBtn = ui.Button({
 });
 
 controlPanel.add(exportVectorBtn);
-
-
 
 
 // ====================== 2) Create DOWNLOAD button =========================
@@ -1917,12 +1782,10 @@ function convert_format(obj) {
       };
     }
 
-    // case 2 — nested object → recurse (soil, change_detection, etc.)
     else if (obj[key] && typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
       newObj[key] = convert_format(obj[key]);
     }
 
-    // case 3 — keep unchanged
     else {
       newObj[key] = obj[key];
     }
@@ -1935,16 +1798,10 @@ function convert_format(obj) {
 var downloadRulesBtn = ui.Button({
   label: 'Print Final Rule JSON',
   onClick: function () {
-
-    // 🔁 FORCE re-sync of Step 6+ dynamic rules
-    // showAndOnMap();
-
-    // ⏳ Allow UI + rule state to settle
     ee.Number(1).evaluate(function () {
 
       var rulesObj = getAllRulesJSON_Object();
       
-      // ================= ADD METADATA =================
       rulesObj.metadata = {
         project_name: projectName,
         description: projectDescription,
@@ -1952,7 +1809,6 @@ var downloadRulesBtn = ui.Button({
         use_case: projectUseCase
       };
       
-      // adding years description
       rulesObj.years = {
         train: {
           base: trainYears.base,
@@ -1964,12 +1820,11 @@ var downloadRulesBtn = ui.Button({
         }
       };
 
-      // convert ONLY rainfall and elevation
       var formatted = convert_format(rulesObj);
       var rulesJSON = JSON.stringify(formatted, null, 2);
 
-      print('🔍 Final Rules Object:', rulesObj);
-      print('📄 Final Rules JSON (pretty):', rulesJSON);
+      print('Final Rules Object:', rulesObj);
+      print('Final Rules JSON (pretty):', rulesJSON);
 
       var jsonLabel = ui.Label({
         value: rulesJSON,
@@ -1982,7 +1837,7 @@ var downloadRulesBtn = ui.Button({
 
       controlPanel.add(jsonLabel);
 
-      print('✅ JSON export completed with Step 6+ rules included');
+      print('JSON export completed with Step 6+ rules included');
     });
   }
 });
@@ -1991,7 +1846,6 @@ controlPanel.add(ui.Label({
   value: 'You can also generate the rules in a JSON output and save it for your site. You can later copy-paste these rules to initialize the app the next time you want to use it. ',
   style: {'fontSize': '14px'}
 }));
-// controlPanel.add(downloadRulesBtn);
 
 
 var rulesTablePanel = ui.Panel({
@@ -1999,7 +1853,6 @@ var rulesTablePanel = ui.Panel({
     stretch: 'horizontal',
     margin: '10px 0',
     padding: '8px',
-    // border: '1px solid gray',
     shown: false
   }
 });
@@ -2029,7 +1882,6 @@ function buildRulesTable() {
     }
   });
 
-  // Helper to make cells
   function makeCell(text, width, bg, isHeader) {
     return ui.Label({
       value: text,
@@ -2047,7 +1899,6 @@ function buildRulesTable() {
     });
   }
 
-  // Header Row
   var header = ui.Panel({
     layout: ui.Panel.Layout.flow('horizontal'),
     style: {margin: '0px', padding: '0px', stretch: 'horizontal'}
@@ -2056,7 +1907,6 @@ function buildRulesTable() {
   header.add(makeCell('Values', '70%', '#e0e0e0', true));
   table.add(header);
   
-  // ================= ADD METADATA ROWS =================
   var metadataRows = [
     {label: 'Project Name', value: projectName},
     {label: 'Description', value: projectDescription},
@@ -2066,7 +1916,7 @@ function buildRulesTable() {
   
   metadataRows.forEach(function(item, idx) {
   
-    if (!item.value) return; // skip empty fields
+    if (!item.value) return;
   
     var bg = (idx % 2 === 0) ? '#ffffff' : '#f9f9f9';
   
@@ -2097,20 +1947,17 @@ function buildRulesTable() {
     } else if (key === 'elevation' && Array.isArray(value)) {
       valueStr = value[0] + ' - ' + value[1] + ' m';
     } else if (key === 'change_detection' && typeof value === 'object') {
-      // valueStr = "From: " + value.from.join(', ') + "\nTo: " + value.to.join(', ');
       var fromYear = trainYears.base || '';
       var toYear   = trainYears.restoration || '';
     
       var fromVals = [];
       var toVals = [];
     
-      // Case 1: [[...], [...]]
       if (Array.isArray(value)) {
         fromVals = value[0] || [];
         toVals   = value[1] || [];
       }
     
-      // Case 2: {from:[], to:[]}
       else if (value.from && value.to) {
         fromVals = value.from;
         toVals   = value.to;
@@ -2146,10 +1993,8 @@ function buildRulesTable() {
     table.add(row);
   }
 
-  // Add table first (important for async update)
   rulesTablePanel.add(table);
 
-  // ================= AREA ROW (ASYNC) =================
   if (currentAndImage && roi_boundary) {
 
     var areaImage = ee.Image.pixelArea().divide(10000); // hectares
@@ -2191,19 +2036,17 @@ var showRulesBtn = ui.Button({
   style: {stretch: 'horizontal'},
   onClick: function() {
 
-    // Toggle visibility
     var isVisible = rulesTablePanel.style().get('shown');
 
     if (isVisible) {
       rulesTablePanel.style().set('shown', false);
     } else {
-      buildRulesTable();   // rebuild fresh each time
+      buildRulesTable();  
       rulesTablePanel.style().set('shown', true);
     }
   }
 });
 
-// controlPanel.add(showRulesBtn);
 
 var buttonRow = ui.Panel({
   layout: ui.Panel.Layout.flow('horizontal'),
@@ -2213,7 +2056,6 @@ var buttonRow = ui.Panel({
   }
 });
 
-// Make both buttons occupy equal space
 downloadRulesBtn.style().set({
   stretch: 'horizontal'
 });
@@ -2222,10 +2064,8 @@ exportVectorBtn.style().set({
   stretch: 'horizontal'
 });
 
-// Add buttons side-by-side
 buttonRow.add(downloadRulesBtn);
 buttonRow.add(showRulesBtn);
 
-// Add row to panel
 controlPanel.add(buttonRow);
 controlPanel.add(rulesTablePanel);
