@@ -2,7 +2,7 @@ var roi_boundary = null;
 var loadedImage = null;
 var keepRestorationMarkerOnTopFn = null;
 var activeMaps = [Map];
-var checkboxes = [];  // global variable checkboxes
+var checkboxes = [];
 
 exports.setROI = function(roi, mapInstance) {
   roi_boundary = roi;
@@ -19,7 +19,6 @@ var wastelandUtils = {
   layers: []
 };
 
-// Define the wasteland classes and values
 var wastelandClasses = [
   {name: 'Mining/ Industrial Wastelands', value: 1},
   {name: 'Scrub Land', value: 2},
@@ -58,7 +57,7 @@ exports.getPanel = function() {
   checkboxes.push(cb);
   checkboxPanel.add(cb);
   });
-  // --- Add "Select All" button below all checkboxes ---
+  
   var selectAllButton = ui.Button({
     label: 'Select All',
     style: {
@@ -109,7 +108,6 @@ exports.getPanel = function() {
 
     var wasteland = ee.Image("projects/ee-apoorvadewan13/assets/wasteland1516").clip(roi_boundary).unmask(0);
 
-    // Collect selected values
     var selectedValues = [];
     checkboxes.forEach(function(cb, index) {
       if (cb.getValue()) {
@@ -121,11 +119,9 @@ exports.getPanel = function() {
     selectedValues.forEach(function(val) {
       var classMask;
       if (val === 0) {
-        // "Not Wasteland" pixels: not in 1–12 range
         var validWasteland = wasteland.gt(0).and(wasteland.lte(12));
         classMask = validWasteland.not();
       } else {
-        // Regular class: value == val
         classMask = wasteland.eq(val);
       }
       combinedMask = combinedMask.or(classMask);
@@ -133,14 +129,11 @@ exports.getPanel = function() {
 
     var vizParams = {min: 0, max: 1, palette: ['white', 'purple']};
 
-    // Selected = 1 (purple), Others = 0 (white)
-    // var selectedMask = wasteland.remap(selectedValues, ee.List.repeat(1, selectedValues.length), 0);
     var displayImage = combinedMask.selfMask();
     loadedImage = displayImage;
 
     activeMaps.forEach(function(m) {
       m.addLayer(displayImage, vizParams, 'Wastelands');
-      // m.centerObject(roi_boundary, 6);
 
       var makeRow = function(color, name) {
         var colorBox = ui.Label({
@@ -166,7 +159,6 @@ exports.getPanel = function() {
   return panel;
 };
 
-// ----- onclick functionality ----
 exports.getWastelandAtPoint = function(point) {
 
   var wastelandImg = ee.Image("projects/ee-apoorvadewan13/assets/wasteland1516");
@@ -191,11 +183,9 @@ exports.tickCheckboxForValue = function(value) {
   }
   if (!match) return;
 
-  // Tick the checkbox
   for (var j = 0; j < checkboxes.length; j++) {
     if (checkboxes[j].getLabel() === match.name) {
       checkboxes[j].setValue(true);
-      // print("✅ Wasteland checkbox ticked for:", match.name, "(value:", value, ")");
       break;
     }
   }
@@ -208,7 +198,6 @@ exports.setKeepMarkerOnTop = function(fn) {
 exports.getRule = function() {
   if (!roi_boundary) return null;
 
-  // Collect selected wasteland class names
   var selectedNames = [];
   checkboxes.forEach(function(cb, i) {
     if (cb.getValue()) selectedNames.push(wastelandClasses[i].name);
@@ -216,7 +205,7 @@ exports.getRule = function() {
 
   if (selectedNames.length === 0) return null;
 
-  return selectedNames;  // just the selected class labels
+  return selectedNames; 
 };
 
 
@@ -224,16 +213,14 @@ exports.setValues = function(selectedNames) {
   if (!selectedNames || !selectedNames.length) return;
 
   if (!roi_boundary) {
-    print('⚠️ Wasteland: ROI not set');
+    print('Wasteland: ROI not set');
     return;
   }
 
-  // 1️⃣ Clear all checkboxes first
   checkboxes.forEach(function(cb) {
     cb.setValue(false);
   });
 
-  // 2️⃣ Tick checkboxes matching JSON names
   selectedNames.forEach(function(name) {
     for (var i = 0; i < wastelandClasses.length; i++) {
       if (wastelandClasses[i].name === name) {
@@ -243,7 +230,6 @@ exports.setValues = function(selectedNames) {
     }
   });
 
-  // 3️⃣ Rebuild mask (same logic as Load button)
   var wasteland = ee.Image("projects/ee-apoorvadewan13/assets/wasteland1516")
     .clip(roi_boundary)
     .unmask(0);
@@ -256,7 +242,7 @@ exports.setValues = function(selectedNames) {
   });
 
   if (selectedValues.length === 0) {
-    print('⚠️ Wasteland: no valid classes selected');
+    print('Wasteland: no valid classes selected');
     return;
   }
 
@@ -277,7 +263,6 @@ exports.setValues = function(selectedNames) {
   var displayImage = combinedMask.selfMask();
   loadedImage = displayImage;
 
-  // 4️⃣ Remove old wasteland layers
   activeMaps.forEach(function(m) {
     m.layers().forEach(function(layer) {
       if (layer.getName() && layer.getName().indexOf('Wastelands') === 0) {
@@ -286,7 +271,6 @@ exports.setValues = function(selectedNames) {
     });
   });
 
-  // 5️⃣ Add new layer to all active maps
   var vizParams = { min: 0, max: 1, palette: ['white', 'purple'] };
 
   activeMaps.forEach(function(m) {
