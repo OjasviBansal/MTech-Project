@@ -96,7 +96,7 @@ exports.getPanel = function() {
   // --- Load function ---
   var loadBioclim = function() {
     if (!roi_boundary) {
-      print('⚠️ Error: Please set ROI from the main panel first.');
+      print('Error: Please set ROI from the main panel first.');
       return;
     }
 
@@ -104,7 +104,7 @@ exports.getPanel = function() {
     var maxVal = parseFloat(maxBox.getValue());
 
     if (isNaN(minVal) || isNaN(maxVal) || minVal > maxVal) {
-      print('⚠️ Error: Please enter valid min/max values');
+      print('Error: Please enter valid min/max values');
       return;
     }
 
@@ -161,7 +161,6 @@ exports.getPanel = function() {
 };
 
 // ----------------- Exposed functions -----------------
-// ----------------- Updated getLoadedImage -----------------
 exports.getLoadedImage = function() {
   if (!roi_boundary) return null;
 
