@@ -259,6 +259,7 @@ soil.setKeepMarkerOnTop(keepReferenceLayersOnTop);
 fire.setKeepMarkerOnTop(keepReferenceLayersOnTop);
 ldd.setKeepMarkerOnTop(keepReferenceLayersOnTop);
 terrain.setKeepMarkerOnTop(keepReferenceLayersOnTop);
+spatial.setKeepMarkerOnTop(keepReferenceLayersOnTop);
 changeDetection.setKeepMarkerOnTop(keepReferenceLayersOnTop);
 lulcAnalysis.setKeepMarkerOnTop(keepReferenceLayersOnTop);
 ones.setKeepMarkerOnTop(keepReferenceLayersOnTop);
