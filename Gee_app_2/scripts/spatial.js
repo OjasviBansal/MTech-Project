@@ -23,14 +23,14 @@ var years = {
 };
 
 var spatialClasses = [
-  { name: 'Agricultural-residential areas', id: 1 },
-  { name: 'Mostly Forests', id: 2 },
-  { name: 'Mostly Scrublands', id: 3 },
-  { name: 'Himalayan areas', id: 4 },
-  { name: 'Intensive croplands', id: 5 },
-  { name: 'Riverine & coastal system', id: 6 },
-  { name: 'Mostly Wetland areas', id: 7 },
-  { name: 'Bare and Shrub areas', id: 8 }
+  { name: 'Agricultural-residential areas', id: 0 },
+  { name: 'Mostly Forests', id: 1 },
+  { name: 'Mostly Scrublands', id: 2 },
+  { name: 'Himalayan areas', id: 3 },
+  { name: 'Intensive croplands', id: 4 },
+  { name: 'Riverine & coastal system', id: 5 },
+  { name: 'Mostly Wetland areas', id: 6 },
+  { name: 'Bare and Shrub areas', id: 7 }
 ];
 
 var spatialUtils = {
