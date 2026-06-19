@@ -112,16 +112,16 @@ exports.getPanel = function() {
     clearMap();
 
     var terrain = ee.Image("projects/corestack-datasets/assets/datasets/terrain/pan_india_terrain_raster_fabdem").clip(roi_boundary);
-    loadedImage = mask;
-
+  
     var selectedValues = [];
     checkboxes.forEach(function(cb, index) {
       if (cb.getValue()) selectedValues.push(terrainClasses[index].value);
     });
 
-    if (selectedValues.length === 0) return;  // nothing selected
+    if (selectedValues.length === 0) return; 
 
     var mask = terrain.remap(selectedValues, ee.List.repeat(1, selectedValues.length), 0).selfMask();
+    loadedImage = mask;
 
     activeMaps.forEach(function(m) {
       m.addLayer(mask, {min: 0, max: 1, palette: ['white','green']}, 'Terrain');
