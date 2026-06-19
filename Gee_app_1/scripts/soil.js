@@ -162,8 +162,8 @@ function buildSoilStack() {
   var IDS = ee.List(hwsdData.aggregate_array('ID'));
   
   function fcToDict(fc, keyField, valueField) {
-    var keys = ee.List(fc.aggregate_array(keyField));    // server-side list
-    var values = ee.List(fc.aggregate_array(valueField)); // server-side list
+    var keys = ee.List(fc.aggregate_array(keyField));   
+    var values = ee.List(fc.aggregate_array(valueField)); 
     return ee.Dictionary.fromLists(keys, values);
   }
   
