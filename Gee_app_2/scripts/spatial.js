@@ -1,9 +1,8 @@
 // =====================================================
-// SPATIAL CLUSTER RASTER MODULE
+// SPATIAL CLUSTER RASTER MODULE (TEMPORAL VERSION)
 // =====================================================
 
 var roi_boundary = null;
-var loadedImage = null;
 var activeMaps = [];
 var keepRestorationMarkerOnTopFn = null;
 
@@ -12,34 +11,61 @@ var alertLabel = ui.Label({
   style: {color: 'red', fontWeight: 'bold', margin: '4px 0 0 0'}
 });
 
-var checkboxes = [];
 
-// Base raster path configuration
-var rasterBasePath = 'projects/ee-ojasvibansal/assets/spatial_cluster_raster/spatial_raster_';
+var startChecks = {};
+var endChecks = {};
+var selectedStart = [];
+var selectedEnd = [];
+var layers = [];
+
+
+var rasterBasePath = 'projects/ee-ojasvibansal/assets/spatial_clusters_cosine_raster/spatial_raster_';
 
 var years = { 
   validation: { start: null, end: null }, 
   test: { start: null, end: null } 
 };
 
+
 var spatialClasses = [
-  { name: 'Agricultural-residential areas', id: 0 },
-  { name: 'Mostly Forests', id: 1 },
-  { name: 'Mostly Scrublands', id: 2 },
+  { name: 'Mostly trees', id: 0 },
+  { name: 'Intensive croplands', id: 1 },
+  { name: 'Mostly Shrublands', id: 2 },
   { name: 'Himalayan areas', id: 3 },
-  { name: 'Intensive croplands', id: 4 },
-  { name: 'Riverine & coastal system', id: 5 },
-  { name: 'Mostly Wetland areas', id: 6 },
-  { name: 'Bare and Shrub areas', id: 7 }
+  { name: 'Mostly Wetland and riverine areas', id: 4 },
+  { name: 'Agricultural and residential areas', id: 5 },
+  { name: 'Crops and trees', id: 6 },
+  { name: 'Bare and shrub areas', id: 7 },
+  { name: 'Crops and shrubs', id: 8 },
+  { name: 'Trees and shrubs', id: 9 }
 ];
 
-var spatialUtils = {
-  legends: []
-};
+
+function isMap(m) { return m && typeof m.addLayer === 'function' && typeof m.layers === 'function'; }
+
+function initializeCheckboxes() {
+  spatialClasses.forEach(function(item) {
+    var name = item.name;
+    
+    startChecks[name] = ui.Checkbox({label: name, value: false});
+    startChecks[name].onChange(function() {
+      selectedStart = spatialClasses
+        .filter(function(c) { return startChecks[c.name].getValue(); })
+        .map(function(c) { return c.id; });
+    });
+    
+    endChecks[name] = ui.Checkbox({label: name, value: false});
+    endChecks[name].onChange(function() {
+      selectedEnd = spatialClasses
+        .filter(function(c) { return endChecks[c.name].getValue(); })
+        .map(function(c) { return c.id; });
+    });
+  });
+}
 
 exports.setROI = function(roi, mapInstance) {
   roi_boundary = roi;
-  if (mapInstance && activeMaps.indexOf(mapInstance) === -1) {
+  if (isMap(mapInstance) && activeMaps.indexOf(mapInstance) === -1) {
     activeMaps.push(mapInstance);
   }
 };
@@ -48,7 +74,6 @@ exports.setKeepMarkerOnTop = function(fn) {
   keepRestorationMarkerOnTopFn = fn;
 };
 
-// Synchronized workflow hooks from Master script
 exports.setYears = function(startYear, endYear, mode) {
   if (typeof startYear !== 'number' || typeof endYear !== 'number') {
     throw new Error('Start and end years must be numeric values.');
@@ -60,100 +85,91 @@ exports.setYears = function(startYear, endYear, mode) {
   years[mode].end = endYear;
 };
 
-exports.getLoadedImage = function(mode) {
-  if (!roi_boundary) return null;
+function computeTransition(startYear, endYear, startIds, endIds, roi) {
+  if (startYear >= 2023) startYear = 2022;
+  if (endYear >= 2023) endYear = 2022;
   
-  // Default fallback sequence if global master context is omitted
-  if (mode !== 'validation' && mode !== 'test') {
-    mode = 'test'; 
-  }
+  if (startYear < 2000) startYear = 2000;
+  if (endYear < 2000) endYear = 2000;
 
-  var selectedPeriod = years[mode];
-  if (!selectedPeriod.start || !selectedPeriod.end) return null;
+  var startImg = ee.Image(rasterBasePath + startYear).clip(roi);
+  var endImg = ee.Image(rasterBasePath + endYear).clip(roi);
 
-  // Extract activated target IDs
-  var selectedIds = [];
-  checkboxes.forEach(function(cb, index) {
-    if (cb.getValue()) {
-      selectedIds.push(spatialClasses[index].id);
-    }
+  var startMask = ee.Image(0);
+  startIds.forEach(function(id) {
+    startMask = startMask.or(startImg.eq(id));
   });
 
-  if (selectedIds.length === 0) return null;
-
-  // Target ONLY the start year directly
-  var targetYear = selectedPeriod.end;
-  
-  if (targetYear >= 2023) {
-    print('Spatial layer target year (' + targetYear + ') is >= 2023. Automatically defaulting to 2022 asset.');
-    targetYear = 2022;
-  }
-
-  // Fetch the single target year image directly—no collection or .max() reduction needed!
-  var spatialComposite = ee.Image(rasterBasePath + targetYear).clip(roi_boundary);
-  
-  // Generate conditional visibility mask matching the selected IDs
-  var binaryMask = ee.Image(0);
-  selectedIds.forEach(function(id) {
-    binaryMask = binaryMask.or(spatialComposite.eq(id));
+  var endMask = ee.Image(0);
+  endIds.forEach(function(id) {
+    endMask = endMask.or(endImg.eq(id));
   });
 
-  return binaryMask.selfMask();
+  var transitionMask = startMask.and(endMask);
+  return transitionMask.selfMask();
+}
+
+exports.getTrainingImage = function() {
+  if (!roi_boundary || !years.validation.start || !years.validation.end ||
+      selectedStart.length === 0 || selectedEnd.length === 0) return null;
+  return computeTransition(years.validation.start, years.validation.end, selectedStart, selectedEnd, roi_boundary);
 };
 
-exports.setValues = function(values) {
-  if (!Array.isArray(values)) return;
+exports.getInferenceImage = function() {
+  if (!roi_boundary || !years.test.start || !years.test.end ||
+      selectedStart.length === 0 || selectedEnd.length === 0) return null;
+  return computeTransition(years.test.start, years.test.end, selectedStart, selectedEnd, roi_boundary);
+};
 
-  // Uncheck all active boxes
-  checkboxes.forEach(function(cb) {
-    cb.setValue(false);
-  });
-
-  // Toggle active selections matching by Name or ID
-  spatialClasses.forEach(function(item, index) {
-    if (values.indexOf(item.id) !== -1 || values.indexOf(item.name) !== -1) {
-      checkboxes[index].setValue(true);
-    }
-  });
+exports.getLoadedImage = function(mode) {
+  if (mode === 'validation') return exports.getTrainingImage();
+  return exports.getInferenceImage();
 };
 
 exports.getPanel = function(mode) {
-  if (!mode) mode = 'test'; // Match inference step defaults
+  if (!mode) mode = 'test';
+  
+  if (Object.keys(startChecks).length === 0) {
+    initializeCheckboxes();
+  }
   
   var panel = ui.Panel();
 
-  panel.add(ui.Label('Spatial Cluster Assets', {
+  panel.add(ui.Label('Spatial Cluster Changes', {
     fontSize: '16px',
     fontWeight: 'bold',
     margin: '15px 0 5px 10px'
   }));
 
-  panel.add(ui.Label('Select class profiles to mask matching environmental ecosystem targets.', {
-    fontSize: '14px'
+  panel.add(ui.Label('Select class profiles characterizing the pre-degradation state:', {
+    fontSize: '14px', fontWeight: 'bold'
   }));
-
-  var checkboxPanel = ui.Panel({ style: { margin: '5px 10px' } });
-  panel.add(checkboxPanel);
-  panel.add(alertLabel);
-
-  checkboxes = [];
+  var startLayerPanel = ui.Panel({ style: { margin: '5px 10px' } });
   spatialClasses.forEach(function(item) {
-    var cb = ui.Checkbox(item.name, false);
-    checkboxes.push(cb);
-    checkboxPanel.add(cb);
+    startLayerPanel.add(startChecks[item.name]);
   });
+  panel.add(startLayerPanel);
+
+  panel.add(ui.Label('Select class profiles characterizing the restoration state:', {
+    fontSize: '14px', fontWeight: 'bold', margin: '10px 0 5px 10px'
+  }));
+  var endLayerPanel = ui.Panel({ style: { margin: '5px 10px' } });
+  spatialClasses.forEach(function(item) {
+    endLayerPanel.add(endChecks[item.name]);
+  });
+  panel.add(endLayerPanel);
+  panel.add(alertLabel);
 
   var buttonPanel = ui.Panel({
     layout: ui.Panel.Layout.flow('horizontal'),
     style: { margin: '10px 0', padding: '0 10px' }
   });
 
-  var runButton = ui.Button('Show Spatial Assets');
+  var runButton = ui.Button('Load Spatial Transitions');
   var clearButton = ui.Button('Clear Map');
   buttonPanel.add(runButton).add(clearButton);
   panel.add(buttonPanel);
 
-  // ---- Interaction Execution Handlers ----
   runButton.onClick(function() {
     alertLabel.setValue('');
     if (!roi_boundary) {
@@ -163,38 +179,29 @@ exports.getPanel = function(mode) {
 
     var selectedPeriod = (mode === 'validation') ? years.validation : years.test;
     if (!selectedPeriod.start || !selectedPeriod.end) {
-      alertLabel.setValue('Target calculation timeline window not initialized.');
+      alertLabel.setValue('Target timeline window not initialized.');
       return;
     }
 
-    var spatialLayer = exports.getLoadedImage(mode);
+    if (selectedStart.length === 0 || selectedEnd.length === 0) {
+      alertLabel.setValue('Select at least one Baseline and Target class profile.');
+      return;
+    }
+
+    var spatialLayer = (mode === 'validation') ? exports.getTrainingImage() : exports.getInferenceImage();
     if (!spatialLayer) {
-      alertLabel.setValue('No spatial asset targets selected or found.');
+      alertLabel.setValue('No spatial change metrics found.');
       return;
     }
 
-    loadedImage = spatialLayer;
-    clearMapOnly(); // Clear previous iterations safely before rendering
-
+    exports.clearPreview(); 
+    
     activeMaps.forEach(function(m) {
-      m.addLayer(spatialLayer, { palette: ['#9c27b0'] }, 'Spatial');
-
-      // Create contextual status indicator legend components
-      var legend = ui.Panel({
-        style: {
-          position: 'bottom-left',
-          padding: '8px',
-          backgroundColor: 'rgba(255,255,255,0.8)'
-        }
-      });
-
-      legend.add(ui.Label('Spatial Assets', { fontWeight: 'bold', margin: '0 0 4px 0' }));
-      legend.add(ui.Panel([
-        ui.Label('', { backgroundColor: '#9c27b0', padding: '8px', margin: '0 4px 0 0' }),
-        ui.Label('Selected Zones', { margin: '0' })
-      ], ui.Panel.Layout.flow('horizontal')));
-
-      spatialUtils.legends.push(legend);
+      if (!isMap(m)) return;
+      
+      var vis = { palette: ['#9c27b0'], min: 0, max: 1 };
+      var layer = m.addLayer(spatialLayer, vis, 'Spatial');
+      layers.push({ map: m, layer: layer });
     });
 
     if (keepRestorationMarkerOnTopFn) {
@@ -207,51 +214,89 @@ exports.getPanel = function(mode) {
   return panel;
 };
 
-function removeLegend() {
-  spatialUtils.legends.forEach(function(legend) {
-    activeMaps.forEach(function(m) {
-      if (m && typeof m.widgets === 'function') {
-        m.widgets().remove(legend);
+exports.setValues = function(spatialTransitionValues) {
+  if (!Array.isArray(spatialTransitionValues) || spatialTransitionValues.length < 2) return;
+  
+  var startVals = spatialTransitionValues[0]; 
+  var endVals = spatialTransitionValues[1]; 
+
+  if (Object.keys(startChecks).length === 0) {
+    initializeCheckboxes();
+  }
+
+  spatialClasses.forEach(function(item) {
+    startChecks[item.name].setValue(false);
+    endChecks[item.name].setValue(false);
+  });
+
+  if (Array.isArray(startVals)) {
+    spatialClasses.forEach(function(item) {
+      if (startVals.indexOf(item.id) !== -1 || startVals.indexOf(item.name) !== -1) {
+        startChecks[item.name].setValue(true);
       }
     });
-  });
-  spatialUtils.legends = [];
-}
+  }
 
-function clearMapOnly() {
-
-  activeMaps.forEach(function(m) {
-
-    var layers = m.layers();
-
-    for (var i = layers.length() - 1; i >= 0; i--) {
-
-      var layer = layers.get(i);
-
-      if (layer.getName() === 'Spatial') {
-        layers.remove(layer);
+  if (Array.isArray(endVals)) {
+    spatialClasses.forEach(function(item) {
+      if (endVals.indexOf(item.id) !== -1 || endVals.indexOf(item.name) !== -1) {
+        endChecks[item.name].setValue(true);
       }
-    }
+    });
+  }
+
+  selectedStart = spatialClasses.filter(function(c) { return startChecks[c.name].getValue(); }).map(function(c) { return c.id; });
+  selectedEnd = spatialClasses.filter(function(c) { return endChecks[c.name].getValue(); }).map(function(c) { return c.id; });
+};
+
+exports.applyInferenceMap = function(mapInstance) {
+  if (!roi_boundary || !selectedStart.length || !selectedEnd.length || !isMap(mapInstance)) return null;
+  
+  var infImg = exports.getInferenceImage();
+  if (!infImg) return null;
+  
+  var vis = { palette: ['#9c27b0'], min: 0, max: 1 };
+  var layerInf = mapInstance.addLayer(infImg, vis, 'Spatial');
+  
+  if (keepRestorationMarkerOnTopFn) {
+    ui.util.setTimeout(keepRestorationMarkerOnTopFn, 100);
+  }
+  
+  return layerInf;
+};
+
+
+function clearPreview() {
+  layers.forEach(function(ent) {
+    if (isMap(ent.map)) ent.map.remove(ent.layer);
   });
+  layers = [];
 }
+
+exports.clearPreview = clearPreview;
 
 exports.clearMap = function() {
-  clearMapOnly();
-  removeLegend();
-  loadedImage = null;
+  clearPreview();
+  
+  selectedStart = [];
+  selectedEnd = [];
+  
+  spatialClasses.forEach(function(item) {
+    if (startChecks[item.name]) startChecks[item.name].setValue(false);
+    if (endChecks[item.name]) endChecks[item.name].setValue(false);
+  });
+  
   alertLabel.setValue('');
 };
 
-exports.getRule = function() {
-  if (!roi_boundary) return null;
+exports.getRule = function(mode) {
+  if (!selectedStart.length && !selectedEnd.length) return null;
 
-  var selectedClassNames = [];
-  checkboxes.forEach(function(cb, index) {
-    if (cb.getValue()) {
-      selectedClassNames.push(spatialClasses[index].name);
-    }
-  });
+  var fromNames = spatialClasses.filter(function(c) { return selectedStart.indexOf(c.id) !== -1; }).map(function(c) { return c.name; });
+  var toNames = spatialClasses.filter(function(c) { return selectedEnd.indexOf(c.id) !== -1; }).map(function(c) { return c.name; });
 
-  if (selectedClassNames.length === 0) return null;
-  return selectedClassNames; 
+  return {
+    "from": fromNames,
+    "to": toNames
+  }; 
 };
