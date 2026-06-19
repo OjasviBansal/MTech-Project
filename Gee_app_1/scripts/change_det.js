@@ -240,7 +240,7 @@ exports.applyFromJSON = function(trainingMap, inferenceMap) {
 
   var vis = { palette: ['black', 'red'], min: 0, max: 1 };
 
-  // ---------- TRAINING ----------
+  //training
   if (trainingMap &&
       years.validation.start &&
       years.validation.end) {
@@ -261,7 +261,7 @@ exports.applyFromJSON = function(trainingMap, inferenceMap) {
     }
   }
 
-  // ---------- INFERENCE ----------
+  //inference
   if (inferenceMap &&
       years.test.start &&
       years.test.end) {
