@@ -281,7 +281,7 @@ function showAndOnMap() {
     {image: changeDetection.getInferenceImage ? changeDetection.getInferenceImage() : null, name: 'Change Detection'},  //inferYears.preDeg, inferYears.current
     {image: fire.getLoadedImage ? fire.getLoadedImage(inferYears.preDeg, inferYears.current) : null, name: 'Fire'},
     {image: terrain.getLoadedImage ? terrain.getLoadedImage() : null, name: 'Terrain'},
-    {image: spatial.getLoadedImage ? spatial.getLoadedImage() : null, name: 'Spatial'},
+    {image: spatial.getLoadedImage ? spatial.getInferenceImage() : null, name: 'Spatial'},
     {image: ones.getOneMap ? ones.getOneMap() : null, name: 'Open Natural Ecosystems (ONEs)'},
     {image: naturalForests.getLoadedImage ? naturalForests.getLoadedImage() : null, name: 'Natural Forests' }
   ];
@@ -422,7 +422,7 @@ function showAndOnMap2() {
     {image: changeDetection.getInferenceImage ? changeDetection.getInferenceImage() : null, name: 'Change Detection'}, //inferYears.preDeg, inferYears.current
     {image: fire.getLoadedImage ? fire.getLoadedImage(inferYears.preDeg, inferYears.current) : null, name: 'Fire'},
     {image: terrain.getLoadedImage ? terrain.getLoadedImage() : null, name: 'Terrain'},
-    {image: spatial.getLoadedImage ? spatial.getLoadedImage() : null, name: 'Spatial'},
+    {image: spatial.getLoadedImage ? spatial.getInferenceImage() : null, name: 'Spatial'},
     {image: ones.getOneMap ? ones.getOneMap() : null, name: 'Open Natural Ecosystems (ONEs)'},
     {image: naturalForests.getLoadedImage ? naturalForests.getLoadedImage() : null, name: 'Natural Forests'}
   ];
@@ -694,6 +694,7 @@ var setRegionBtn = ui.Button({
     changeDetection.setYears(preDegInfer, currentYear, 'test');
     fire.setYears(preDegTrain, restorationStart, 'validation');
     fire.setYears(preDegInfer, currentYear, 'test');
+    spatial.setYears(preDegTrain, restorationStart, 'validation'); 
     spatial.setYears(preDegInfer, currentYear, 'test'); 
 
     print('Years set: Training:', preDegTrain, restorationStart, 'Inference:', preDegInfer, currentYear);
@@ -920,6 +921,7 @@ var setYearsBtn1 = ui.Button({
     trainYears.restoration = restorationStart;
  
     changeDetection.setYears(preDegTrain, restorationStart, 'validation'); 
+    spatial.setYears(preDegTrain, restorationStart, 'validation'); 
     fire.setYears(preDegTrain, restorationStart, 'validation'); 
     // fire.setYears(preDegInfer, currentYear, 'test'); // inference
 
@@ -1576,7 +1578,43 @@ function buildRulesTable() {
         "\nTo (" + toYear + "): " + toVals.join(', ');
 
         
-    } else if (Array.isArray(value)) {
+    } 
+    else if (key === 'spatial' && typeof value === 'object') {
+      var selectedRegion = null;
+      var selectedName = regionDropdown.getValue();
+    
+      for (var j = 0; j < projectRegions.length; j++) {
+        if (projectRegions[j].name === selectedName) {
+          selectedRegion = projectRegions[j];
+          break;
+        }
+      }
+    
+      var yrs = (selectedRegion && selectedRegion.years) ? selectedRegion.years : [];
+    
+      var fromYear = (yrs.length >= 1) ? yrs[0] : '';
+      var toYear   = (yrs.length >= 2) ? yrs[1] : '';
+      var fromVals = [];
+      var toVals = [];
+    
+      // CASE 1: Array format [[...],[...]]
+      if (Array.isArray(value)) {
+        fromVals = value[0] || [];
+        toVals   = value[1] || [];
+      }
+    
+      // CASE 2: Object format {from:[], to:[]}
+      else if (value.from && value.to) {
+        fromVals = value.from;
+        toVals   = value.to;
+      }
+    
+      valueStr =
+        "From (" + fromYear + "): " + fromVals.join(', ') +
+        "\nTo (" + toYear + "): " + toVals.join(', ');
+        
+    }
+    else if (Array.isArray(value)) {
       valueStr = value.join(', ');
     } else if (typeof value === 'object') {
       valueStr = JSON.stringify(value);
