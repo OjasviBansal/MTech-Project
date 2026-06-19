@@ -1,7 +1,3 @@
-// =====================================================
-// SPATIAL CLUSTER RASTER MODULE (TEMPORAL VERSION)
-// =====================================================
-
 var roi_boundary = null;
 var activeMaps = [];
 var keepRestorationMarkerOnTopFn = null;
