@@ -1,262 +1,296 @@
 var roi_boundary = null;
-var loadedImage = null;
-var selectedYear = null;
-var mapInstance = null;
+var activeMaps = [];               
+var loadedPreviewLayer = null;      
+var layers = [];                    
+var selectedStart = [];
+var selectedEnd = [];
 var keepRestorationMarkerOnTopFn = null;
+var years = {
+  validation: { start: null, end: null },
+  test:       { start: null, end: null }
+};
+var loadedImage = null;
 
-var alertLabel = ui.Label({
-  value: '',
-  style: {color: 'red', fontWeight: 'bold', margin: '4px 0 0 0'}
-});
+function isMap(m) { return m && typeof m.addLayer === 'function' && typeof m.layers === 'function'; }
 
-var checkboxes = {}; 
+var startChecks = {};
+var endChecks = {};
 
-var rasterBasePath = 'projects/ee-ojasvibansal/assets/spatial_cluster_raster/spatial_raster_';
+var trainingLayer = null;
+var inferenceLayer = null;
+
+var rasterBasePath = 'projects/ee-ojasvibansal/assets/spatial_clusters_cosine_raster/spatial_raster_';
 
 var spatialClasses = [
-  { name: 'Agricultural-residential areas', id: 0 },
-  { name: 'Mostly Forests', id: 1 },
-  { name: 'Mostly Scrublands', id: 2 },
+  { name: 'Mostly trees', id: 0 },
+  { name: 'Intensive croplands', id: 1 },
+  { name: 'Mostly Shrublands', id: 2 },
   { name: 'Himalayan areas', id: 3 },
-  { name: 'Intensive croplands', id: 4 },
-  { name: 'Riverine & coastal system', id: 5 },
-  { name: 'Mostly Wetland areas', id: 6 },
-  { name: 'Bare and Shrub areas', id: 7 }
+  { name: 'Mostly Wetland and riverine areas', id: 4 },
+  { name: 'Agricultural and residential areas', id: 5 },
+  { name: 'Crops and trees', id: 6 },
+  { name: 'Bare and shrub areas', id: 7 },
+  { name: 'Crops and shrubs', id: 8 },
+  { name: 'Trees and shrubs', id: 9 }
 ];
 
-var spatialUtils = { 
-  layer: null,
-  legends: []
+exports.setROI = function(roi, mapInstance) {
+  roi_boundary = roi;
+  if (isMap(mapInstance) && activeMaps.indexOf(mapInstance) === -1) {
+    activeMaps.push(mapInstance);
+  }
 };
 
-exports.setROI = function(roi, map, year) {
-  roi_boundary = roi;
-  mapInstance = map;  
-  selectedYear = year;    
+exports.setYears = function(startYear, endYear, mode) {
+  if (typeof startYear !== 'number' || typeof endYear !== 'number') {
+    throw new Error('Years must be numbers');
+  }
+  if (mode === 'validation') {
+    years.validation.start = startYear;
+    years.validation.end = endYear;
+  } else if (mode === 'test') {
+    years.test.start = startYear;
+    years.test.end = endYear;
+  } else {
+    throw new Error('Mode must be "validation" or "test".');
+  }
+};
+
+function getImageForYear(year) {
+  var safeYear = Math.min(year, 2022);
+  if (safeYear < 2000) safeYear = 2000; 
+  return ee.Image(rasterBasePath + safeYear);
+}
+
+function getLayerMask(image, classNames) {
+  if (!Array.isArray(classNames)) classNames = [classNames];
+  var masks = classNames.map(function(className) {
+    var match = spatialClasses.filter(function(c) { return c.name === className; })[0];
+    var cid = match ? match.id : -1;
+    return image.eq(cid);
+  });
+  return ee.ImageCollection(masks).max();
+}
+
+function computeSpatialChange(startYear, endYear, startClasses, endClasses, roi) {
+  var start_img = getImageForYear(startYear);
+  var end_img = getImageForYear(endYear);
+  var start_mask = getLayerMask(start_img, startClasses);
+  var end_mask = getLayerMask(end_img, endClasses);
+  var transition_mask = start_mask.and(end_mask);
+  
+  if (roi) {
+    transition_mask = transition_mask.clip(roi);
+  }
+  return transition_mask.selfMask();
+}
+
+exports.getTrainingImage = function() {
+  if (!roi_boundary || !years.validation.start || !years.validation.end ||
+      selectedStart.length === 0 || selectedEnd.length === 0) return null;
+  return computeSpatialChange(years.validation.start, years.validation.end, selectedStart, selectedEnd, roi_boundary);
+};
+
+exports.getInferenceImage = function() {
+  if (!roi_boundary || !years.test.start || !years.test.end ||
+      selectedStart.length === 0 || selectedEnd.length === 0) return null;
+  return computeSpatialChange(years.test.start, years.test.end, selectedStart, selectedEnd, roi_boundary);
+};
+
+exports.getPanel = function() {
+  var panel = ui.Panel();
+  panel.add(ui.Label({
+    value: 'Spatial Cluster Assets',
+    style: {fontSize: '16px', fontWeight: 'bold', margin: '10px 0 5px 10px'}
+  }));
+  panel.add(ui.Label({
+    value: 'Select class profiles characterizing the pre-degradation state:',
+    style: {'fontSize': '14px'}
+  }));
+
+  var startLayerPanel = ui.Panel({layout: ui.Panel.Layout.flow('vertical')});
+  spatialClasses.forEach(function(item) {
+    var cb = ui.Checkbox({label: item.name, value: false});
+    startChecks[item.name] = cb;
+    startLayerPanel.add(cb);
+    cb.onChange(function() {
+      selectedStart = spatialClasses
+        .map(function(c) { return c.name; })
+        .filter(function(name){ return startChecks[name].getValue(); });
+    });
+  });
+  panel.add(startLayerPanel);
+
+  var endLayerPanel = ui.Panel({layout: ui.Panel.Layout.flow('vertical')});
+  spatialClasses.forEach(function(item) {
+    var cb = ui.Checkbox({label: item.name, value: false});
+    endChecks[item.name] = cb;
+    endLayerPanel.add(cb);
+    cb.onChange(function() {
+      selectedEnd = spatialClasses
+        .map(function(c) { return c.name; })
+        .filter(function(name){ return endChecks[name].getValue(); });
+    });
+  });
+  panel.add(ui.Label('Select class profiles characterizing the restoration state:'));
+  panel.add(endLayerPanel);
+
+  var runBtn = ui.Button('Load spatial assets');
+  var clearBtn = ui.Button('Clear Map');
+  panel.add(ui.Panel([runBtn, clearBtn], ui.Panel.Layout.flow('horizontal')));
+
+  function clearPreview() {
+    if (!activeMaps.length) return;
+    var m = activeMaps[0];
+    var layersList = m.layers();
+    for (var i = layersList.length() - 1; i >= 0; i--) {
+      var lyr = layersList.get(i);
+      if (lyr.getName() === 'Spatial (validation)') {
+        layersList.remove(lyr);
+      }
+    }
+  }
+
+  runBtn.onClick(function() {
+    if (!roi_boundary) { print('Set ROI from main panel first.'); return; }
+    if (!years.validation.start || !years.validation.end) { print('Validation years not set.'); return; }
+    if (selectedStart.length === 0 || selectedEnd.length === 0) { print('Select at least one Start and End class profile.'); return; }
+    if (activeMaps.length === 0) { print('No map registered.'); return; }
+
+    clearPreview();
+    var trainImg = exports.getTrainingImage();
+    if (!trainImg) return;
+
+    var vis = {palette: ['#9c27b0'], min: 0, max: 1};
+    var mTrain = activeMaps[0];
+    var layerTrain = mTrain.addLayer(trainImg, vis, 'Spatial (validation)');
+    layers.push({map: mTrain, layer: layerTrain});
+    if (keepRestorationMarkerOnTopFn) {
+      ui.util.setTimeout(keepRestorationMarkerOnTopFn, 100);
+    }
+  });
+
+  clearBtn.onClick(clearPreview);
+  return panel;
+};
+
+exports.applyInferenceMap = function(mapInstance) {
+  if (!roi_boundary || !selectedStart.length || !selectedEnd.length) return null;
+  var infImg = exports.getInferenceImage();
+  if (!infImg) return null;
+
+  var vis = {palette: ['#9c27b0'], min: 0, max: 1};
+  var layerInf = mapInstance.addLayer(infImg, vis, 'Spatial (test)');
+  if (keepRestorationMarkerOnTopFn) {
+    ui.util.setTimeout(keepRestorationMarkerOnTopFn, 100);
+  }
+  return layerInf;
 };
 
 exports.setKeepMarkerOnTop = function(fn) {
   keepRestorationMarkerOnTopFn = fn;
 };
 
-exports.setYears = function(currentYear) {
-  if (typeof currentYear !== 'number') {
-    throw new Error('Spatial asset calculation target year must be a number');
+exports.getRule = function(mode) {
+  if (!selectedStart || !selectedEnd || (selectedStart.length === 0 && selectedEnd.length === 0)) {
+    return null; 
   }
-  selectedYear = currentYear;
-};
-
-exports.getLoadedImage = function() {
-  return loadedImage; 
-};
-
-exports.getPanel = function() {
-  var panel = ui.Panel();
-
-  panel.add(ui.Label('Spatial Cluster Assets', {
-    fontSize: '16px',
-    fontWeight: 'bold',
-    margin: '15px 0 5px 10px'
-  }));
-
-  panel.add(ui.Label('Select class profiles to mask matching environmental ecosystem targets.', {
-    fontSize: '14px'
-  }));
-
-  var checkboxPanel = ui.Panel({ 
-    layout: ui.Panel.Layout.flow('vertical'), 
-    style: { margin: '5px 10px' } 
-  });
-  panel.add(checkboxPanel);
-  panel.add(alertLabel);
-
-  spatialClasses.forEach(function(item) {
-    var cb = ui.Checkbox(item.name, false);
-    checkboxes[item.name] = cb;
-    checkboxPanel.add(cb);
-  });
-
-  var buttonPanel = ui.Panel({
-    layout: ui.Panel.Layout.flow('horizontal'),
-    style: { margin: '10px 0', padding: '0 10px' }
-  });
-
-  var loadButton = ui.Button({ label: 'Load', style: { margin: '5px 5px 5px 0', height: '30px' } });
-  var clearButton = ui.Button({ label: 'Clear Map', style: { margin: '5px 0 5px 0', height: '30px' } });
-  buttonPanel.add(loadButton).add(clearButton);
-  panel.add(buttonPanel);
-
-  var clearMap = function() {
-    if (!mapInstance) return;
-    
-    if (spatialUtils.layer) { 
-      mapInstance.layers().remove(spatialUtils.layer); 
-      spatialUtils.layer = null; 
-    }
-    loadedImage = null;
+  return {
+    "from": selectedStart,
+    "to": selectedEnd
   };
-
-  var loadSpatial = function() {
-    alertLabel.setValue('');
-    if (!selectedYear) {
-      alertLabel.setValue('Target timeline calculation year not initialized from step controls.');
-      return;
-    }
-  
-    if (!mapInstance) {
-      print('️ Spatial: mapInstance target reference missing.');
-      return;
-    }
-    
-    clearMap();
-    
-    var targetYear = selectedYear;
-    if (targetYear >= 2023) {
-      print(' Target year clamped down to maximum available spatial asset layer (2022).');
-      targetYear = 2022;
-    } else if (targetYear < 2000) {
-      print('️ Target year clamped up to earliest available spatial asset layer (2000).');
-      targetYear = 2000;
-    }
-
-    var img = ee.Image(rasterBasePath + targetYear);
-    if (roi_boundary) { 
-      img = img.clip(roi_boundary); 
-    }
-
-    var maskList = [];
-    spatialClasses.forEach(function(item) {
-      if (checkboxes[item.name].getValue()) {
-        maskList.push(img.eq(item.id));
-      }
-    });
-
-    if (maskList.length === 0) return;
-
-    var finalMask = ee.ImageCollection(maskList).max();
-    loadedImage = finalMask;
-
-    spatialUtils.layer = mapInstance.addLayer(
-      finalMask.selfMask(), 
-      { palette: ['#9c27b0'], min: 0, max: 1 }, 
-      'Spatial'
-    );
-
-    if (keepRestorationMarkerOnTopFn) {
-      ui.util.setTimeout(keepRestorationMarkerOnTopFn, 100);
-    }
-  };
-
-  loadButton.onClick(loadSpatial);
-  clearButton.onClick(clearMap);
-
-  return panel;
 };
 
+exports.setValues = function(ruleObj) {
+  if (!ruleObj || typeof ruleObj !== 'object') return;
 
-function removeLegend() {
-  if (!mapInstance) return;
-  spatialUtils.legends.forEach(function(legend) {
-    mapInstance.widgets().remove(legend);
+  var from = ruleObj.from || [];
+  var to   = ruleObj.to   || [];
+
+  Object.keys(startChecks).forEach(function(k) {
+    startChecks[k].setValue(false);
   });
-  spatialUtils.legends = [];
-}
-
-exports.clearMap = function() {
-  if (mapInstance && spatialUtils.layer) {
-    mapInstance.layers().remove(spatialUtils.layer);
-    spatialUtils.layer = null;
-  }
-  loadedImage = null;
-  alertLabel.setValue('');
-};
-
-exports.getRule = function() {
-  if (!roi_boundary) return null;
-
-  var selected = [];
-  Object.keys(checkboxes).forEach(function(name) {
-    var cb = checkboxes[name];
-    if (cb && cb.getValue()) {
-      selected.push(name);
-    }
+  Object.keys(endChecks).forEach(function(k) {
+    endChecks[k].setValue(false);
   });
 
-  if (selected.length === 0) return null;
-  return selected; 
-};
-
-
-exports.setValues = function(spatialRules, map) {
-  var mapToUse = map || mapInstance;
-  
-  if (!spatialRules || !spatialRules.length) return;
-
-  if (!mapInstance) {
-    print(' Spatial module: mapInstance missing workspace reference link context.');
-    return;
-  }
-
-  if (!selectedYear) {
-    print(' Spatial module: selectedYear context timeline property not set.');
-    return;
-  }
-
-  Object.keys(checkboxes).forEach(function(name) {
-    checkboxes[name].setValue(false);
-  });
-
-  spatialRules.forEach(function(nameOrId) {
-    if (checkboxes[nameOrId]) {
-      checkboxes[nameOrId].setValue(true);
+  selectedStart = [];
+  for (var i = 0; i < from.length; i++) {
+    var cls = from[i];
+    var matchedName = null;
+    if (startChecks[cls]) {
+      matchedName = cls;
     } else {
-      spatialClasses.forEach(function(item) {
-        if (item.id === nameOrId || item.id === parseInt(nameOrId)) {
-          checkboxes[item.name].setValue(true);
-        }
-      });
+      var match = spatialClasses.filter(function(c) { return c.id === cls || c.id === parseInt(cls); })[0];
+      if (match) matchedName = match.name;
     }
-  });
 
-  if (spatialUtils.layer) {
-    mapInstance.layers().remove(spatialUtils.layer);
-    spatialUtils.layer = null;
-  }
-
-  var targetYear = selectedYear;
-  if (targetYear >= 2023) {
-    targetYear = 2022;
-  } else if (targetYear < 2000) {
-    targetYear = 2000;
-  }
-
-  var img = ee.Image(rasterBasePath + targetYear);
-  if (roi_boundary) {
-    img = img.clip(roi_boundary);
-  }
-
-  var maskList = [];
-  spatialClasses.forEach(function(item) {
-    if (checkboxes[item.name].getValue()) {
-      maskList.push(img.eq(item.id));
+    if (matchedName && startChecks[matchedName]) {
+      startChecks[matchedName].setValue(true);
+      if (selectedStart.indexOf(matchedName) === -1) {
+        selectedStart.push(matchedName);
+      }
     }
-  });
-
-  if (maskList.length === 0) return;
-
-  var finalMask = ee.ImageCollection(maskList).max().selfMask();
-  loadedImage = finalMask;
-
-  if (spatialUtils.layer) {
-    mapToUse.layers().remove(spatialUtils.layer);
-    spatialUtils.layer = null;
   }
-  
-  spatialUtils.layer = mapToUse.addLayer(
-    finalMask,
-    { palette: ['#9c27b0'], min: 0, max: 1 },
-    'Spatial'
-  );
+
+  selectedEnd = [];
+  for (var j = 0; j < to.length; j++) {
+    var cls2 = to[j];
+    var matchedName2 = null;
+    if (endChecks[cls2]) {
+      matchedName2 = cls2;
+    } else {
+      var match2 = spatialClasses.filter(function(c) { return c.id === cls2 || c.id === parseInt(cls2); })[0];
+      if (match2) matchedName2 = match2.name;
+    }
+
+    if (matchedName2 && endChecks[matchedName2]) {
+      endChecks[matchedName2].setValue(true);
+      if (selectedEnd.indexOf(matchedName2) === -1) {
+        selectedEnd.push(matchedName2);
+      }
+    }
+  }
+};
+
+exports.applyFromJSON = function(trainingMap, inferenceMap) {
+  if (!roi_boundary) return;
+  if (!selectedStart.length || !selectedEnd.length) return;
+
+  var vis = { palette: ['#9c27b0'], min: 0, max: 1 };
+
+  if (trainingMap && years.validation.start && years.validation.end) {
+    if (trainingLayer) {
+      trainingMap.layers().remove(trainingLayer);
+      trainingLayer = null;
+    }
+
+    var trainImg = exports.getTrainingImage();
+    if (trainImg) {
+      trainingLayer = trainingMap.addLayer(
+        trainImg,
+        vis,
+        'Spatial (validation)'
+      );
+      loadedImage = trainImg;
+    }
+  }
+
+  if (inferenceMap && years.test.start && years.test.end) {
+    if (inferenceLayer) {
+      inferenceMap.layers().remove(inferenceLayer);
+      inferenceLayer = null;
+    }
+
+    var infImg = exports.getInferenceImage();
+    if (infImg) {
+      inferenceLayer = inferenceMap.addLayer(
+        infImg,
+        vis,
+        'Spatial (test)'
+      );
+    }
+  }
 
   if (keepRestorationMarkerOnTopFn) {
     ui.util.setTimeout(keepRestorationMarkerOnTopFn, 100);
