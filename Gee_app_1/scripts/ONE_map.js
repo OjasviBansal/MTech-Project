@@ -1,5 +1,3 @@
-// ==================== THEMATICS MASK PANEL (ONES) ====================
-
 var roi_boundary = null;
 var mapInstance = null;
 var loadedImage = null;
