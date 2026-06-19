@@ -34,8 +34,8 @@ function count_fire_occurrences(image_collection) {
 
 exports.getFireAtPoint = function(point) {
   var selectedYears = years.validation;
-  var startYear = (selectedYears.start != null) ? selectedYears.start : 2001;
-  var endYear = (selectedYears.end != null) ? selectedYears.end : 2020;
+  var startYear = (selectedYears.start !== null) ? selectedYears.start : 2001;
+  var endYear = (selectedYears.end !== null) ? selectedYears.end : 2020;
 
   var fireCollection = ee.ImageCollection("MODIS/061/MCD64A1")
     .filterDate(ee.Date.fromYMD(startYear, 1, 1),
