@@ -1,14 +1,13 @@
-// ==================== THEMATICS MASK PANEL (ONES) ====================
 var roi_boundary = null;
 var mapInstance = null;
 var loadedImage = null;
 var keepRestorationMarkerOnTopFn = null;
+
 var selectedThemeValues = [];
 var checkboxes = {};
 var onesLayer = null;
-var loadMask = null;
 
-// ==================== THEMATIC DEFINITIONS ====================
+var loadMask = null;
 
 var themeNames = [
   'Open Agriculture',               
@@ -30,6 +29,7 @@ var themeNameToIndex = {};
 themeNames.forEach(function(name, i) {
   themeNameToIndex[name] = themeIndices[i];
 });
+
 
 exports.setROI = function(roi, map) {
   roi_boundary = roi;
@@ -73,14 +73,12 @@ exports.getOneMap = function() {
 
     selectedThemeValues.forEach(function(v) {
 
-      // If it's already a number (class ID)
       if (typeof v === 'number') {
         if (themeIndices.indexOf(v) !== -1) {
           selectedIndices.push(v);
         }
       }
 
-      // If it's a string name
       if (typeof v === 'string') {
         if (themeNameToIndex.hasOwnProperty(v)) {
           selectedIndices.push(themeNameToIndex[v]);
@@ -94,7 +92,6 @@ exports.getOneMap = function() {
     return null;
   }
 
-  // Remove duplicates
   selectedIndices = selectedIndices.filter(function(v, i, arr) {
     return arr.indexOf(v) === i;
   });
@@ -108,7 +105,6 @@ exports.getOneMap = function() {
   return loadedImage;
 };
 
-// ==================== PANEL UI ====================
 
 exports.getPanel = function() {
   var panel = ui.Panel();
@@ -216,7 +212,7 @@ exports.getRule = function() {
   if (!selectedThemeValues || selectedThemeValues.length === 0) {
     return null;
   }
-  return selectedThemeValues; // array of NAMES
+  return selectedThemeValues; 
 };
 
 exports.setValues = function(values) {
