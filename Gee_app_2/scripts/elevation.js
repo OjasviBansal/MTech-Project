@@ -1,12 +1,10 @@
 var roi_boundary = null;
 var loadedImage = null;
-var activeMaps = [Map]; // default to the global Map
+var activeMaps = [Map]; 
 var keepRestorationMarkerOnTopFn = null;
 
-// Track UI elements
 var minBox, maxBox;
 
-// Allow ROI + map registration
 exports.setROI = function(roi, mapInstance) {
   roi_boundary = roi;
   if (mapInstance && activeMaps.indexOf(mapInstance) === -1) {
@@ -18,7 +16,6 @@ exports.setKeepMarkerOnTop = function(fn) {
   keepRestorationMarkerOnTopFn = fn;
 };
 
-// ==================== Elevation ====================
 var elevationUtils = {
   layer: null,
   legends: []
@@ -44,7 +41,6 @@ exports.getPanel = function() {
   });
   panel.add(controlPanel);
 
-  // --- Textboxes ---
   minBox = ui.Textbox({
     placeholder: 'Min elevation (m)',
     value: '0',
@@ -57,7 +53,6 @@ exports.getPanel = function() {
     style: {width: '120px', margin: '0 10px 0 0'}
   });
 
-  // --- Buttons ---
   var loadButton = ui.Button({
     label: 'Load',
     style: {margin: '0 5px 0 0', height: '30px'}
@@ -73,8 +68,6 @@ exports.getPanel = function() {
   controlPanel.add(loadButton);
   controlPanel.add(clearButton);
 
-  
-  // --- Load function ---
   var loadElevation = function() {
     if (!roi_boundary) {
       print('Error: Please set ROI from the main panel first.');
@@ -91,11 +84,9 @@ exports.getPanel = function() {
 
     clearMap();
 
-    // SRTM elevation data
     var dataset = ee.Image('USGS/SRTMGL1_003');
     var elevation = dataset.clip(roi_boundary);
 
-    // Binary mask: 1 where within range
     var masked = elevation.gte(minVal).and(elevation.lte(maxVal)).selfMask();
 
     activeMaps.forEach(function(m) {
@@ -105,7 +96,6 @@ exports.getPanel = function() {
         'Elevation'
       );
 
-      // Legend
       var legend = ui.Panel({
         style: {position: 'bottom-left', padding: '8px 15px', backgroundColor: 'white'}
       });
@@ -123,7 +113,6 @@ exports.getPanel = function() {
         layout: ui.Panel.Layout.flow('horizontal')
       }));
 
-      // m.add(legend);
       elevationUtils.legends.push(legend);
     });
 
@@ -141,7 +130,6 @@ exports.getPanel = function() {
   return panel;
 };
 
-// ----------------- Exposed functions -----------------
 exports.getLoadedImage = function() {
   if (!roi_boundary) return null;
 
@@ -150,7 +138,6 @@ exports.getLoadedImage = function() {
 
   if (isNaN(minVal) || isNaN(maxVal) || minVal > maxVal) return null;
 
-  // Compute binary mask on the fly
   var dataset = ee.Image('USGS/SRTMGL1_003');
   var elevationImage = dataset.clip(roi_boundary);
   loadedImage = elevationImage.gte(minVal).and(elevationImage.lte(maxVal)).selfMask();
@@ -158,7 +145,6 @@ exports.getLoadedImage = function() {
   return loadedImage;
 };
 
-// ----------------- New setter function -----------------
 exports.setRange = function(minVal, maxVal) {
   if (minBox && maxBox) {
     minBox.setValue(minVal);
@@ -168,7 +154,6 @@ exports.setRange = function(minVal, maxVal) {
   }
 };
 
-// ------------------- Remove legend function -------------------
 function removeLegend() {
   elevationUtils.legends.forEach(function(legend) {
     activeMaps.forEach(function(m) {
@@ -178,9 +163,7 @@ function removeLegend() {
   elevationUtils.legends = [];
 }
 
-// ------------------- Clear map function (updated) -------------------
 function clearMap() {
-  // Remove layers
   activeMaps.forEach(function(m) {
     m.layers().forEach(function(layer) {
       if (layer.getName() && layer.getName().indexOf('Elevation') === 0) {
@@ -189,14 +172,12 @@ function clearMap() {
     });
   });
 
-  // Remove legends
   removeLegend();
 
   elevationUtils.layer = null;
   loadedImage = null;
 }
 
-// ------------------- Export functions -------------------
 exports.clearMap = clearMap;
 exports.removeLegend = removeLegend;
 
@@ -211,7 +192,6 @@ exports.getRule = function () {
     return null;
   }
 
-  // Standard numeric-range rule
   return {
     min: minVal,
     max: maxVal
