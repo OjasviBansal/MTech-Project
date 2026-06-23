@@ -3,10 +3,8 @@ var loadedImage = null;
 var activeMaps = [Map];
 var keepRestorationMarkerOnTopFn = null;
 
-// Track UI elements
 var minBox, maxBox;
 
-// Allow ROI + map registration
 exports.setROI = function(roi, mapInstance) {
   roi_boundary = roi;
   if (mapInstance && activeMaps.indexOf(mapInstance) === -1) {
@@ -18,14 +16,12 @@ exports.setKeepMarkerOnTop = function(fn) {
   keepRestorationMarkerOnTopFn = fn;
 };
 
-// ==================== Bioclim Annual Mean Temperature ====================
 
 var tempUtils = {
   layer: null,
   legends: []
 };
 
-// --- Clear function ---
 var clearMap = function() {
   activeMaps.forEach(function(m) {
     m.layers().forEach(function(layer) {
@@ -67,7 +63,6 @@ exports.getPanel = function() {
 
   panel.add(controlPanel);
 
-  // --- Textboxes ---
   minBox = ui.Textbox({
     placeholder: 'Min',
     value: '',
@@ -80,7 +75,6 @@ exports.getPanel = function() {
     style: {width: '120px', margin: '0 10px 0 0'}
   });
 
-  // --- Buttons ---
   var loadButton = ui.Button({
     label: 'Load',
     style: {margin: '0 5px 0 0', height: '30px'}
@@ -96,11 +90,10 @@ exports.getPanel = function() {
   controlPanel.add(loadButton);
   controlPanel.add(clearButton);
 
-  // --- Load function ---
   var loadTemperature = function() {
 
     if (!roi_boundary) {
-      print('⚠️ Error: Please set ROI from the main panel first.');
+      print('Error: Please set ROI from the main panel first.');
       return;
     }
 
@@ -108,21 +101,18 @@ exports.getPanel = function() {
     var maxVal = parseFloat(maxBox.getValue());
 
     if (isNaN(minVal) || isNaN(maxVal) || minVal > maxVal) {
-      print('⚠️ Error: Please enter valid min/max values');
+      print('Error: Please enter valid min/max values');
       return;
     }
 
     clearMap();
 
-    // WorldClim BIO01 (Annual Mean Temperature)
     var dataset = ee.Image('WORLDCLIM/V1/BIO');
 
-    // IMPORTANT: bio01 has scale factor 0.1 → convert to °C
     var bio01 = dataset.select('bio01')
                        .multiply(0.1)
                        .clip(roi_boundary);
 
-    // Binary mask
     var masked = bio01.gte(minVal)
                       .and(bio01.lte(maxVal))
                       .selfMask();
@@ -135,7 +125,6 @@ exports.getPanel = function() {
         'Temperature'
       );
 
-      // Legend
       var legend = ui.Panel({
         style: {position: 'bottom-left', padding: '8px 15px', backgroundColor: 'white'}
       });
@@ -169,7 +158,6 @@ exports.getPanel = function() {
   return panel;
 };
 
-// ----------------- Exposed Functions -----------------
 
 exports.getLoadedImage = function() {
   if (!roi_boundary) return null;
