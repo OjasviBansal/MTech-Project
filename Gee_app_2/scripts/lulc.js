@@ -2,9 +2,9 @@ var roi_boundary = null;
 var loadedImage = null;
 var keepRestorationMarkerOnTopFn = null;
 
-var selectedYear = null;  // store the year passed from main script
+var selectedYear = null; 
 var activeMaps = [Map];
-var checkboxes = [];  // global array for LULC checkboxes
+var checkboxes = [];  
 
 
 var pendingLulcValues = null;
@@ -28,7 +28,6 @@ var lulcUtils = { layers: [], legends: [] };
 
 exports.setROI = function(roi, mapInstance, year) {
   roi_boundary = roi;
-  // selectedYear = year;
   if (mapInstance && activeMaps.indexOf(mapInstance) === -1) activeMaps.push(mapInstance);
 };
 
@@ -48,12 +47,9 @@ exports.setYears = function(startYear, endYear) {
   print('LULC selectedYear set to:', selectedYear);
 };
 
-
-// ----------------- Updated getLoadedImage -----------------
 exports.getLoadedImage = function() {
   if (!roi_boundary || !selectedYear) return null;
 
-  // Load LULC image for the selected year
   var img = ee.Image(
     "projects/corestack-datasets/assets/datasets/LULC_v3_river_basin/pan_india_lulc_v3_" 
     + selectedYear + "_" + (parseInt(selectedYear) + 1)
@@ -61,18 +57,16 @@ exports.getLoadedImage = function() {
 
   img = img.clip(roi_boundary);
 
-  // Collect currently selected checkbox values
   var selectedValues = [];
   checkboxes.forEach(function(cb, index) {
     if (cb.getValue()) selectedValues.push(lulcClasses[index].value);
   });
 
   if (selectedValues.length === 0) {
-    loadedImage = null;  // nothing selected
+    loadedImage = null; 
     return null;
   }
 
-  // Remap selected values to 1, others to 0
   loadedImage = img.remap(
     selectedValues, 
     ee.List.repeat(1, selectedValues.length), 
@@ -106,7 +100,6 @@ exports.getPanel = function() {
     checkboxPanel.add(cb);
   });
   
-  // Apply cached JSON values (if any)
   if (pendingLulcValues) {
     print("Applying cached LULC values:", pendingLulcValues);
     exports.setValues(pendingLulcValues);
@@ -136,7 +129,6 @@ exports.getPanel = function() {
   
     img = img.clip(roi_boundary);
   
-    // FIRST collect selected values
     var selectedValues = [];
     var selectedNames = [];
     checkboxes.forEach(function(cb, index) {
@@ -155,7 +147,6 @@ exports.getPanel = function() {
       return;
     }
   
-    // Create mask
     loadedImage = img.remap(
       selectedValues,
       ee.List.repeat(1, selectedValues.length),
@@ -181,7 +172,6 @@ exports.getPanel = function() {
   return panel;
 };
 
-// Tick checkbox by name
 exports.tickCheckboxByName = function(name) {
   checkboxes.forEach(function(cb) {
     if (cb.getLabel() === name) cb.setValue(true);
@@ -194,24 +184,19 @@ exports.setValues = function(values) {
 
   if (!Array.isArray(values)) return;
 
-  // UI not ready → cache
   if (checkboxes.length === 0) {
     pendingLulcValues = values;
     return;
   }
 
-  // Clear all
   checkboxes.forEach(function(cb) {
     cb.setValue(false);
   });
 
-  // SUPPORT BOTH:
-  // - numeric values (region presets)
-  // - string names (JSON rules)
   lulcClasses.forEach(function(cls, index) {
     if (
-      values.indexOf(cls.value) !== -1 ||   // numeric case 
-      values.indexOf(cls.name) !== -1       // name case 
+      values.indexOf(cls.value) !== -1 ||  
+      values.indexOf(cls.name) !== -1   
     ) {
       checkboxes[index].setValue(true);
     }
@@ -221,7 +206,6 @@ exports.setValues = function(values) {
 };
 
 
-// ------------------- Remove legend function -------------------
 function removeLegend() {
   lulcUtils.legends.forEach(function(legend) {
     activeMaps.forEach(function(m) {
@@ -233,9 +217,7 @@ function removeLegend() {
   lulcUtils.legends = [];
 }
 
-// ------------------- Clear map function (updated) -------------------
 function clearMap() {
-  // Remove LULC layers
   activeMaps.forEach(function(m) {
     m.layers().forEach(function(layer) {
       if (layer.getName() && layer.getName().indexOf('LULC') === 0) {
@@ -244,14 +226,12 @@ function clearMap() {
     });
   });
 
-  // Remove legends
   removeLegend();
 
   lulcUtils.layers = [];
   loadedImage = null;
 }
 
-// ------------------- Export functions -------------------
 exports.clearMap = clearMap;
 exports.removeLegend = removeLegend;
 
@@ -259,7 +239,6 @@ exports.removeLegend = removeLegend;
 exports.getRule = function() {
   if (!roi_boundary) return null;
 
-  // Collect selected LULC class names
   var selectedNames = [];
   checkboxes.forEach(function(cb, i) {
     if (cb.getValue()) selectedNames.push(lulcClasses[i].name);
@@ -267,5 +246,5 @@ exports.getRule = function() {
 
   if (selectedNames.length === 0) return null;
 
-  return selectedNames;  // just the selected class labels
+  return selectedNames;  
 };
