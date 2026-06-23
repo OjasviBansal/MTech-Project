@@ -1,23 +1,21 @@
-// ==================== GLOBALS ====================
 var roi_boundary = null;
-var activeMaps = []; // only ui.Map instances
-var loadedPreviewLayer = null; // last preview layer (training)
-var legends = []; // [{map, legend}]
-var layers = []; // layers added for preview
+var activeMaps = []; 
+var loadedPreviewLayer = null;
+var legends = [];
+var layers = []; 
 var selectedStart = [];
 var selectedEnd = [];
 var years = {
   validation: { start: null, end: null },
   test: { start: null, end: null }
 };
-var startChecks = {}; // module-level
-var endChecks = {}; // module-level
+var startChecks = {}; 
+var endChecks = {}; 
 
 var keepRestorationMarkerOnTopFn = null;
 
 function isMap(m) { return m && typeof m.addLayer === 'function' && typeof m.layers === 'function'; }
 
-// Initialize checkboxes
 function initializeCheckboxes() {
   var keys = Object.keys(lulc_mapping);
   keys.forEach(function(k) {
@@ -36,7 +34,6 @@ exports.setKeepMarkerOnTop = function(fn) {
   keepRestorationMarkerOnTopFn = fn;
 };
 
-// ==================== ROI / REGISTRATION ====================
 exports.setROI = function(roi, mapInstance) {
   roi_boundary = roi;
   if (isMap(mapInstance) && activeMaps.indexOf(mapInstance) === -1) {
@@ -44,9 +41,7 @@ exports.setROI = function(roi, mapInstance) {
   }
 };
 
-// ==================== PUBLIC: set years ====================
 exports.setYears = function(startYear, endYear, mode) {
-  // mode = 'validation' (Step 3) or 'test' (Step 6)
   if (typeof startYear !== 'number' || typeof endYear !== 'number') {
     throw new Error('Years must be numbers');
   }
@@ -61,7 +56,6 @@ exports.setYears = function(startYear, endYear, mode) {
   }
 };
 
-// ==================== LULC mapping & datasets ====================
 var lulc_mapping = {
   "croplands":[10,11,12,20],"trees":[51,52,61,62,71,72,81,82,91,92,101,102,111,112],
   "shrubs_scrubs":[120,121,122,130,140],"grasslands":[150,160,170],
@@ -99,11 +93,9 @@ function computeChange(startYear, endYear, startClasses, endClasses, roi) {
   var start_mask = getLayerMask(start_img, startClasses);
   var end_mask = getLayerMask(end_img, endClasses);
   var transition_mask = start_mask.and(end_mask).clip(roi);
-  // return transition_mask.unmask(0);
   return transition_mask.selfMask();
 }
 
-// ==================== PUBLIC: training & inference images ====================
 exports.getTrainingImage = function() {
   if (!roi_boundary || !years.validation.start || !years.validation.end ||
       selectedStart.length === 0 || selectedEnd.length === 0) return null;
@@ -115,10 +107,9 @@ exports.getInferenceImage = function() {
   return computeChange(years.test.start, years.test.end, selectedStart, selectedEnd, roi_boundary);
 };
 
-// ==================== UI: panel with checkboxes & preview ====================
 exports.getPanel = function() {
   if (Object.keys(startChecks).length === 0) {
-    initializeCheckboxes(); // Ensure checkboxes are initialized only once
+    initializeCheckboxes();
   }
   var panel = ui.Panel();
   panel.add(ui.Label({
@@ -134,14 +125,12 @@ exports.getPanel = function() {
     startLayerPanel.add(startChecks[k]);
   });
   panel.add(startLayerPanel);
-  // End Layer checkboxes
   var endLayerPanel = ui.Panel({layout: ui.Panel.Layout.flow('vertical')});
   panel.add(ui.Label('Select classes that may help characterize the area during the restoration initiation year. '));
   Object.keys(endChecks).forEach(function(k) {
     endLayerPanel.add(endChecks[k]);
   });
   panel.add(endLayerPanel);
-  // Buttons
   var runBtn = ui.Button('Load change detection');
   var clearBtn = ui.Button('Clear Map');
   panel.add(ui.Panel([runBtn, clearBtn], ui.Panel.Layout.flow('horizontal')));
@@ -164,7 +153,6 @@ exports.getPanel = function() {
   
     var m = activeMaps[0];
   
-    // REMOVE OLD Change Detection layers (important)
     var mapLayers = m.layers();
     for (var i = mapLayers.length() - 1; i >= 0; i--) {
       if (mapLayers.get(i).getName() === 'Change Detection') {
@@ -172,15 +160,12 @@ exports.getPanel = function() {
       }
     }
   
-    // Recompute training image
     var trainImg = exports.getTrainingImage();
     if (!trainImg) return;
   
-    // Add exactly ONE preview layer
     var vis = { palette: ['red'], min: 0, max: 1 };
     var layer = m.addLayer(trainImg, vis, 'Change Detection');
   
-    // Track for clearing later
     layers = [{ map: m, layer: layer }];
     loadedPreviewLayer = trainImg;
     
@@ -195,7 +180,6 @@ exports.getPanel = function() {
   return panel;
 };
 
-// ---- External helper for Step 8 (after LULC + rules applied) ----
 exports.applyInferenceMap = function(mapInstance) {
   if (!roi_boundary || !selectedStart.length || !selectedEnd.length) return null;
   var infImg = exports.getInferenceImage();
@@ -217,37 +201,32 @@ exports.applyInferenceMap = function(mapInstance) {
     ui.util.setTimeout(keepRestorationMarkerOnTopFn, 100);
   }
   
-  // mapInstance.add(legendInf);
   return layerInf;
 };
 
-// ==================== Set values programmatically ====================
 exports.setValues = function(changeDetectionValues) {
   print("setValues function is running");
   if (!Array.isArray(changeDetectionValues)) return;
   if (changeDetectionValues.length < 2) return;
-  var startVals = changeDetectionValues[0]; // previous classes
-  var endVals = changeDetectionValues[1]; // next classes
+  var startVals = changeDetectionValues[0];
+  var endVals = changeDetectionValues[1];
   print("startVals:", startVals);
   print("endVals:", endVals);
   var keys = Object.keys(lulc_mapping);
-  // Clear all checkboxes first
   keys.forEach(function(k) {
     if (startChecks && startChecks[k]) startChecks[k].setValue(false);
     if (endChecks && endChecks[k]) endChecks[k].setValue(false);
   });
-  // Tick start layer checkboxes
   if (Array.isArray(startVals)) {
     startVals.forEach(function(idx) {
-      var key = keys[idx - 1]; // 1-based input
+      var key = keys[idx - 1]; 
       if (key && startChecks[key]) startChecks[key].setValue(true);
     });
     selectedStart = keys.filter(function(key) { return startChecks[key].getValue(); });
   }
-  // Tick end layer checkboxes
   if (Array.isArray(endVals)) {
     endVals.forEach(function(idx) {
-      var key = keys[idx - 1]; // 1-based input
+      var key = keys[idx - 1]; 
       if (key && endChecks[key]) endChecks[key].setValue(true);
     });
     selectedEnd = keys.filter(function(key) { return endChecks[key].getValue(); });
@@ -255,26 +234,21 @@ exports.setValues = function(changeDetectionValues) {
   print("Change Detection checkboxes updated for start:", selectedStart, "end:", selectedEnd);
 };
 
-// ------------------- Clear Map Function -------------------
 function clearMap() {
-  // Remove all change detection layers
   layers.forEach(function(ent) {
     if (isMap(ent.map)) ent.map.remove(ent.layer);
   });
   layers = [];
   loadedPreviewLayer = null;
 
-  // Remove all legends
   legends.forEach(function(ent) {
     if (isMap(ent.map)) ent.map.remove(ent.legend);
   });
   legends = [];
 
-  // Reset selected state
   selectedStart = [];
   selectedEnd = [];
 
-  // Optionally clear checkboxes (so that UI resets too)
   Object.keys(startChecks).forEach(function(k) {
     if (startChecks[k]) startChecks[k].setValue(false);
   });
@@ -283,7 +257,6 @@ function clearMap() {
   });
 }
 
-// ------------------- Clear all preview layers + legends -------------------
 function clearPreview() {
   layers.forEach(function(ent) {
     if (isMap(ent.map)) ent.map.remove(ent.layer);
@@ -291,20 +264,16 @@ function clearPreview() {
   layers = [];
   loadedPreviewLayer = null;
 
-  // Remove legends using the new function
   removeLegend();
 }
 
-// ------------------- Export Functions -------------------
 exports.clearMap = clearMap;
 
-// Keep existing exports
-exports.clearPreview = clearMap; // alias for backward compatibility
+exports.clearPreview = clearMap; 
 
 exports.getRule = function(mode) {
-  // Check if any classes are selected
   if (!selectedStart || !selectedEnd || selectedStart.length === 0 && selectedEnd.length === 0) {
-    return null; // nothing selected
+    return null; 
   }
 
   return {
