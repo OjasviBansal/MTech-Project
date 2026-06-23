@@ -3,7 +3,7 @@ var loadedImage = null;
 var keepRestorationMarkerOnTopFn = null;
 
 var activeMaps = [Map];
-var checkboxes = []; // global checkboxes
+var checkboxes = []; 
 
 exports.setROI = function(roi, mapInstance) {
   roi_boundary = roi;
@@ -21,27 +21,23 @@ var lddUtils = {
   legends: []
 };
 
-// ==================== Loaded image getter ====================
 exports.getLoadedImage = function() {
   if (!roi_boundary || checkboxes.length === 0) return null;
 
   var ldd_image = ee.Image("projects/ee-apoorvadewan13/assets/ldd1516").clip(roi_boundary);
 
-  // Collect selected LDD values
   var selectedValues = [];
   checkboxes.forEach(function(cb, index) {
     if (cb.getValue()) selectedValues.push(lddClasses[index].value);
   });
 
-  if (selectedValues.length === 0) return null; // nothing selected
+  if (selectedValues.length === 0) return null; 
 
-  // Remap to 1 for selected, 0 otherwise, and mask
   var mask = ldd_image.remap(selectedValues, ee.List.repeat(1, selectedValues.length), 0).selfMask();
 
   return mask;
 };
 
-// ================== LDD CLASSES ==================
 var lddClasses = [
   {name: 'Others - Riverine Sands / Sea Ingress etc', value: 1},
   {name: 'Water Erosion - Sheet erosion - Slight', value: 2},
@@ -80,7 +76,6 @@ var lddClasses = [
   {name: 'Glacial - Frost heaving', value: 35},
 ];
 
-// ================== PANEL ==================
 exports.getPanel = function() {
   var panel = ui.Panel();
   
@@ -97,7 +92,6 @@ exports.getPanel = function() {
   var checkboxPanel = ui.Panel({style: {margin: '0 10px'}});
   panel.add(checkboxPanel);
 
-  // reset and fill global checkboxes
   checkboxes = [];
   lddClasses.forEach(function(item) {
     var cb = ui.Checkbox(item.name, false);
@@ -117,7 +111,6 @@ exports.getPanel = function() {
   buttonPanel.add(clearButton);
   panel.add(buttonPanel);
 
-  // --- Clear ---
   var clearMap = function() {
     activeMaps.forEach(function(m) {
       m.layers().forEach(function(layer) {
@@ -134,7 +127,6 @@ exports.getPanel = function() {
     loadedImage = null;
   };
 
-  // --- Load ---
   var loadSelectedLDD = function() {
     if (!roi_boundary) {
       ui.alert('Error', 'Please set ROI from the main panel first.');
@@ -159,7 +151,6 @@ exports.getPanel = function() {
 
     activeMaps.forEach(function(m) {
       m.addLayer(displayImage, vizParams, 'Land Degradation');
-      // m.centerObject(roi_boundary, 6);
 
       var legend = ui.Panel({
         style: {
@@ -190,11 +181,9 @@ exports.getPanel = function() {
       legend.add(legendTitle);
       legend.add(row);
 
-      // m.add(legend);
       lddUtils.legends.push(legend);
     });
     
-    // KEEP ROI Boundary & ROI Center ON TOP
     if (keepRestorationMarkerOnTopFn) {
       ui.util.setTimeout(keepRestorationMarkerOnTopFn, 100);
     }
@@ -224,16 +213,13 @@ exports.tickCheckboxForValue = function(value) {
   }
 };
 
-// ---------------- Set multiple LDD classes programmatically ----------------
 exports.setValues = function(values) {
   if (!Array.isArray(values)) return;
 
-  // Uncheck all checkboxes first
   checkboxes.forEach(function(cb) {
     cb.setValue(false);
   });
 
-  // Tick checkboxes for the specified values
   lddClasses.forEach(function(cls, index) {
     if (values.indexOf(cls.value) !== -1) {
       checkboxes[index].setValue(true);
@@ -245,7 +231,6 @@ exports.setValues = function(values) {
 
 
 var clearMap = function() {
-  // Remove all LDD layers
   lddUtils.layers.forEach(function(ent) {
     if (activeMaps.indexOf(ent.map) !== -1) {
       ent.map.remove(ent.layer);
@@ -268,14 +253,12 @@ var clearMap = function() {
   print("LDD map layers and legends cleared.");
 };
 
-// ------------------- Export Clear Map -------------------
 exports.clearMap = clearMap;
 
 
 exports.getRule = function() {
   if (!roi_boundary) return null;
 
-  // Collect selected class names
   var selectedNames = [];
   checkboxes.forEach(function(cb, idx) {
     if (cb.getValue()) selectedNames.push(lddClasses[idx].name);
@@ -283,5 +266,5 @@ exports.getRule = function() {
 
   if (selectedNames.length === 0) return null;
 
-  return selectedNames;  // just the selected class labels
+  return selectedNames; 
 };
