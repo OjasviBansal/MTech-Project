@@ -16,11 +16,9 @@ exports.setKeepMarkerOnTop = function(fn) {
   keepRestorationMarkerOnTopFn = fn;
 };
 
-// ----------------- Updated getLoadedImage -----------------
 exports.getLoadedImage = function() {
   if (!roi_boundary) return null;
 
-  // Load terrain raster
   var terrain = ee.Image("projects/corestack-datasets/assets/datasets/terrain/pan_india_terrain_raster_fabdem").clip(roi_boundary);
   
   var selectedValues = [];
@@ -33,7 +31,6 @@ exports.getLoadedImage = function() {
     return null;
   }
 
-  // Remap selected values to 1, others to 0 and mask
   loadedImage = terrain.remap(
     selectedValues,
     ee.List.repeat(1, selectedValues.length),
@@ -64,16 +61,13 @@ var terrainClasses = [
   {name: 'Mountain tops, high ridges', value: 11}
 ];
 
-// ---------------- Set terrain class values programmatically ----------------
 exports.setValues = function(values) {
   if (!Array.isArray(values)) return;
 
-  // Uncheck all first
   checkboxes.forEach(function(cb) {
     cb.setValue(false);
   });
 
-  // Tick the checkboxes whose terrain values match
   terrainClasses.forEach(function(tc, index) {
     if (values.indexOf(tc.value) !== -1) {
       checkboxes[index].setValue(true);
@@ -93,7 +87,6 @@ exports.setValues = function(values) {
 
 };
 
-// ---------------- UI Panel ----------------
 exports.getPanel = function() {
   var panel = ui.Panel();
   panel.add(ui.Label('Terrain (CoRE stack)', {fontSize: '16px', fontWeight: 'bold', margin: '15px 0 5px 10px'}));
@@ -102,7 +95,6 @@ exports.getPanel = function() {
   var checkboxPanel = ui.Panel({style: {margin: '0 10px'}});
   panel.add(checkboxPanel);
 
-  // Create checkboxes and assign to module-level variable
   checkboxes = [];
   terrainClasses.forEach(function(item) {
     var cb = ui.Checkbox(item.name, false);
@@ -124,21 +116,18 @@ exports.getPanel = function() {
     var terrain = ee.Image("projects/corestack-datasets/assets/datasets/terrain/pan_india_terrain_raster_fabdem").clip(roi_boundary);
     loadedImage = terrain;
 
-    // Collect selected values
     var selectedValues = [];
     checkboxes.forEach(function(cb, index) {
       if (cb.getValue()) selectedValues.push(terrainClasses[index].value);
     });
 
-    if (selectedValues.length === 0) return;  // nothing selected
+    if (selectedValues.length === 0) return;
 
     var mask = terrain.remap(selectedValues, ee.List.repeat(1, selectedValues.length), 0).selfMask();
 
     activeMaps.forEach(function(m) {
       m.addLayer(mask, {min: 0, max: 1, palette: ['white','green']}, 'Terrain');
-      // m.centerObject(roi_boundary, 6);
 
-      // Simple legend
       var legend = ui.Panel({
         style: {position: 'bottom-left', padding: '8px', backgroundColor: 'rgba(255,255,255,0.8)'}
       });
@@ -149,7 +138,6 @@ exports.getPanel = function() {
         ui.Label({value: 'Selected Terrain Classes', style: {margin: '0'}})
       ], ui.Panel.Layout.flow('horizontal')));
 
-      // m.add(legend);
       terrainUtils.legends.push(legend);
     });
     
@@ -164,7 +152,6 @@ exports.getPanel = function() {
   return panel;
 };
 
-// ------------------- Remove legend function -------------------
 function removeLegend() {
   terrainUtils.legends.forEach(function(legend) {
     activeMaps.forEach(function(m) {
