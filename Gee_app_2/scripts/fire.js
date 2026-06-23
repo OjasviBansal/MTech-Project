@@ -1,7 +1,6 @@
-// ==================== GLOBALS ====================
 var roi_boundary = null;
 var loadedImage = null;
-var activeMaps = [];    // track maps where ROI + layers should appear
+var activeMaps = [];  
 
 var keepRestorationMarkerOnTopFn = null;
 
@@ -9,14 +8,11 @@ var alertLabel = ui.Label({
   value: '',
   style: {color: 'red', fontWeight: 'bold', margin: '4px 0 0 0'}
 });
-// Store year ranges
 var years = { validation: { start: null, end: null }, test: { start: null, end: null } };
 
-// Module-level minFiresBox so it can be auto-set in Step 3a
 var minFiresBox = ui.Textbox({ placeholder: 'Min fire occurrences', value: '0' });
-exports.minFiresBox = minFiresBox;  // export it
+exports.minFiresBox = minFiresBox;  
 
-// ==================== ROI registration ====================
 exports.setROI = function(roi, mapInstance) {
   roi_boundary = roi;
   if (mapInstance && activeMaps.indexOf(mapInstance) === -1) activeMaps.push(mapInstance);
@@ -26,7 +22,6 @@ exports.setKeepMarkerOnTop = function(fn) {
   keepRestorationMarkerOnTopFn = fn;
 };
 
-// ==================== Set years ====================
 exports.setYears = function(startYear, endYear, mode) {
   if (typeof startYear !== 'number' || typeof endYear !== 'number') throw new Error('Start and end years must be numbers.');
   if (mode !== 'validation' && mode !== 'test') throw new Error('Mode must be either "validation" or "test".');
@@ -34,15 +29,13 @@ exports.setYears = function(startYear, endYear, mode) {
   years[mode].end = endYear;
 };
 
-// ==================== Count fire occurrences ====================
 function count_fire_occurrences(image_collection) {
   return image_collection.map(function(image) {
     var fire_band = image.select('BurnDate');
-    return fire_band.gt(0).rename('fireMask');  // 1 where fire occurred
+    return fire_band.gt(0).rename('fireMask'); 
   }).sum();
 }
 
-// ==================== Panel ====================
 exports.getPanel = function(mode) {
   if (!mode) mode = 'validation';
   var panel = ui.Panel();
@@ -58,15 +51,13 @@ exports.getPanel = function(mode) {
   }));
 
   panel.add(ui.Label('Minimum Fire Occurrences:'));
-  panel.add(minFiresBox);  // use module-level box
+  panel.add(minFiresBox); 
   panel.add(alertLabel);
 
   var runButton = ui.Button('Show Fire Occurrences');
   var clearButton = ui.Button('Clear Map');
   panel.add(ui.Panel([runButton, clearButton], ui.Panel.Layout.flow('horizontal')));
 
-  
-  // ---- Run handler ----
   runButton.onClick(function() {
   alertLabel.setValue('');
   if (!roi_boundary) { print('Please set ROI first'); return; }
@@ -90,18 +81,14 @@ exports.getPanel = function(mode) {
 
   loadedImage = fireFiltered;
 
-  // Visualization parameters
   var vis = {palette: ['pink']};
 
-  // Add the image to all active maps if it exists
   if (activeMaps.length > 0) {
     activeMaps.forEach(function(m) {
       if (fireFiltered) {
         m.addLayer(fireFiltered, vis, 'Fire Occurrences ' + selectedYears.start + '-' + selectedYears.end + ' (' + mode + ')');
-        // m.centerObject(roi_boundary, 7);
       }
 
-      // Always add the legend, even if fireFiltered is empty
       var legend = ui.Panel({
         style: {
           position: 'top-left',
@@ -115,14 +102,12 @@ exports.getPanel = function(mode) {
         style: {fontWeight: 'bold', margin: '0 0 4px 0'}
       }));
 
-      // Color box and description
       var colorBox = ui.Label({
         style: {backgroundColor: '#ff69b4', padding: '8px', margin: '0 4px 0 0'}
       });
       var description = ui.Label({value: 'Fire occurrences', style: {margin: '0'}});
 
       legend.add(ui.Panel([colorBox, description], ui.Panel.Layout.flow('horizontal')));
-      // m.widgets().add(legend);
     });
   }
   
@@ -145,13 +130,11 @@ exports.getPanel = function(mode) {
   return panel;
 };
 
-// ==================== Loaded image getter ====================
 exports.getLoadedImage = function(mode) {
   if (mode !== 'validation' && mode !== 'test') {
-    return loadedImage;  // return whatever was last loaded
+    return loadedImage; 
   }
 
-  // Otherwise, compute the image dynamically for the given mode
   var selectedYears = (mode === 'validation') ? years.validation : years.test;
   if (!roi_boundary || !selectedYears.start || !selectedYears.end) return null;
 
@@ -167,8 +150,6 @@ exports.getLoadedImage = function(mode) {
   return fireCount.gte(minFires).selfMask();
 };
 
-
-// ---------------- Set minimum fire occurrences programmatically ----------------
 exports.setFireValue = function(value) {
   if (typeof value !== 'number' || value < 0) {
     throw new Error('Fire minimum value must be a non-negative number');
@@ -178,9 +159,6 @@ exports.setFireValue = function(value) {
   print('minimum fire occurrences set to:', value);
 };
 
-
-
-// ==================== Clear map ====================
 exports.clearMap = function() {
   activeMaps.forEach(function(m) {
     m.layers().forEach(function(layer) {
@@ -218,7 +196,6 @@ exports.getRule = function(mode) {
 
   if (isNaN(minFires) || minFires <= 0) return null;
 
-  // Return simple JSON
-  return minFires;  // just the number of fires
+  return minFires; 
 };
 
