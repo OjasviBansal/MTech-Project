@@ -4,7 +4,7 @@
 // =====================================================
 
 var rasterBasePath =
-  'projects/ee-ojasvibansal/assets/spatial_cluster_raster/spatial_raster_';
+  'projects/ee-ojasvibansal/assets/spatial_clusters_cosine_raster/spatial_raster_';
 
 var geometryTable = ee.FeatureCollection(
   'projects/ee-ojasvibansal/assets/updated_s2_level13_india'
@@ -20,20 +20,22 @@ for (var y = 2000; y <= 2022; y++) {
 }
 
 var palette = [
-  'e41a1c',
-  '377eb8',
-  '4daf4a',
-  '984ea3',
-  'ff7f00',
-  'ffff33',
-  'a65628',
-  'f781bf'
+  '#1a9850', // 0 - Deep Green        -> Mostly trees
+  '#a6d96a', // 1 - Light Green       -> Intensive croplands
+  '#fee08b', // 2 - Pale Yellow       -> Mostly shrublands
+  '#bdbdbd', // 3 - Light Grey        -> Himalayan areas
+  '#3182bd', // 4 - Strong Blue       -> Mostly wetlands and riverine areas
+  '#d73027', // 5 - Red               -> Urban and adjoining agriculture areas
+  '#66c2a5', // 6 - Teal Green        -> Crops and trees
+  '#a9a9a9', // 7 - Dark Red          -> Bare and shrub areas
+  '#dfc27d', // 8 - Tan/Khaki         -> Crops and shrubs
+  '#8c510a'  // 9 - Earthy Brown      -> Trees and shrubs
 ];
 
 var visParams = {
   bands: ['first'],
   min: 0,
-  max: 7,
+  max: 9,
   palette: palette
 };
 
@@ -319,21 +321,23 @@ function addLegend() {
   ));
 
   var clusterNames = [
-    'Agricultural-residential areas',
-    'Mostly trees',
-    'Mostly shrublands',
-    'Himalayan areas',
-    'Intensive croplands',
-    'Riverine and coastal areas',
-    'Mostly wetlands',
-    'Bare and shrub areas'
+    'Mostly trees',         // 0
+    'Intensive croplands',  // 1
+    'Mostly shrublands',    // 2
+    'Himalayan areas',  // 3
+    'Mostly wetands and riverine areas',     // 4
+    'Urban and adjoining agriculture areas',       // 5
+    'Crops and trees',     // 6
+    'Bare and shrub areas',// 7
+    'Crops and shrubs',     // 8
+    'Trees and shrubs'         // 9
   ];
 
-  for (var i = 0; i < 8; i++) {
+  for (var i = 0; i < 10; i++) {
 
     var colorBox = ui.Label({
       style: {
-        backgroundColor: '#' + palette[i],
+        backgroundColor: palette[i],
         padding: '8px',
         margin: '2px 6px 4px 0'
       }
