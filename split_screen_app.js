@@ -7,11 +7,11 @@ var rasterBasePath =
   'projects/ee-ojasvibansal/assets/spatial_clusters_cosine_raster/spatial_raster_';
 
 var geometryTable = ee.FeatureCollection(
-  'projects/ee-ojasvibansal/assets/updated_s2_level13_india'
+  'projects/ee-ojasvibansal/assets/s2_level13_india'
 );
 
 var clusterBasePath =
-  'projects/ee-ojasvibansal/assets/spatial_clusters/spatial_';
+  'projects/ee-ojasvibansal/assets/spatial_clusters_cosine_similarity/spatial_';
 
 var years = [];
 
