@@ -100,7 +100,7 @@ exports.getInferenceImage = function() {
 exports.getPanel = function() {
   var panel = ui.Panel();
   panel.add(ui.Label({
-    value: 'Spatial Cluster Assets',
+    value: 'Spatial Clusters : Land-use distribution (Core Stack)',
     style: {fontSize: '16px', fontWeight: 'bold', margin: '10px 0 5px 10px'}
   }));
   panel.add(ui.Label({
