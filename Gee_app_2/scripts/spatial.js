@@ -131,11 +131,13 @@ exports.getPanel = function(mode) {
   
   var panel = ui.Panel();
 
-  panel.add(ui.Label('Spatial Cluster Changes', {
+  panel.add(ui.Label('Spatial Clusters : Land-use distribution (Core Stack)', {
     fontSize: '16px',
     fontWeight: 'bold',
     margin: '15px 0 5px 10px'
   }));
+  
+  
 
   panel.add(ui.Label('Select class profiles characterizing the pre-degradation state:', {
     fontSize: '14px', fontWeight: 'bold'
